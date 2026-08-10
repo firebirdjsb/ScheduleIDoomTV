@@ -1,0 +1,42 @@
+name: Build ScheduleIDoomTV
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 6
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore
+        run: dotnet restore ScheduleIDoomTV.csproj
+
+      - name: Build
+        run: dotnet build ScheduleIDoomTV.csproj -c Release --no-restore
+
+      - name: Verify DLL
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Recurse -Filter ScheduleIDoomTV.dll | Where-Object { $_.FullName -match 'bin\\Release' } | Select-Object -First 1
+          if (-not $dll) { throw 'ScheduleIDoomTV.dll was not produced.' }
+          Write-Host "Built: $($dll.FullName)"
+          Write-Host "Size: $($dll.Length) bytes"
+          $bytes = [System.IO.File]::ReadAllBytes($dll.FullName)
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Output is not a valid PE file.' }
+          Copy-Item $dll.FullName "$env:GITHUB_WORKSPACE\ScheduleIDoomTV.dll"
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScheduleIDoomTV-dll
+          path: ScheduleIDoomTV.dll
+          if-no-files-found: error
