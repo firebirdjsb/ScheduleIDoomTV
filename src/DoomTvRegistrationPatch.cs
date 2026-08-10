@@ -5,12 +5,6 @@ using MelonLoader;
 
 namespace ScheduleIDoomTV;
 
-/// <summary>
-/// S1API's TVApp auto-discovery is not finding external TVApp subclasses on the
-/// current IL2CPP build. Instead of cloning Schedule I's UI ourselves, hook the
-/// real TVHomeScreen.Open method and ask S1API's TVApp base class to create the
-/// UI and native app button directly.
-/// </summary>
 internal static class DoomTvRegistrationPatch
 {
     private static DoomTvApp? _app;
@@ -20,7 +14,7 @@ internal static class DoomTvRegistrationPatch
     private static MethodInfo? _registryRegister;
     private static FieldInfo? _registeredApps;
 
-    internal static bool Install(Harmony harmony)
+    internal static bool Install(global::HarmonyLib.Harmony harmony)
     {
         Type? homeType = AccessTools.TypeByName("Il2CppScheduleOne.TV.TVHomeScreen")
                          ?? AccessTools.TypeByName("ScheduleOne.TV.TVHomeScreen");
@@ -68,7 +62,6 @@ internal static class DoomTvRegistrationPatch
             if (__instance == null)
                 return;
 
-            // Scene reload or a different TVHomeScreen instance: create a fresh app instance.
             if (!ReferenceEquals(_homeScreen, __instance))
             {
                 _homeScreen = __instance;
@@ -92,10 +85,7 @@ internal static class DoomTvRegistrationPatch
             }
 
             _app = new DoomTvApp();
-
-            // Register first so S1API's home-screen cleanup knows about the app.
             _registryRegister?.Invoke(null, new object?[] { _app });
-
             _spawnUi.Invoke(_app, new[] { __instance });
             _spawnButton.Invoke(_app, new[] { __instance });
 
@@ -118,9 +108,9 @@ internal static class DoomTvRegistrationPatch
 
         foreach (object? app in apps)
         {
-            if (app is DoomTvApp)
+            if (app is DoomTvApp doom)
             {
-                _app = (DoomTvApp)app;
+                _app = doom;
                 return true;
             }
         }
