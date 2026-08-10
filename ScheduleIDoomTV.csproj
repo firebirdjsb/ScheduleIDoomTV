@@ -6,10 +6,22 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>ScheduleIDoomTV</AssemblyName>
     <RootNamespace>ScheduleIDoomTV</RootNamespace>
-    <Version>0.2.1-alpha</Version>
+    <Version>0.2.2-alpha</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="LavaGang.MelonLoader" Version="0.7.3" />
+  </ItemGroup>
+
+  <!--
+    CI compiles against tiny API-shape reference assemblies so the repository can
+    build without redistributing Schedule I or Unity binaries. These stubs are
+    compile-time only and are NOT included in the release artifact. At runtime,
+    Schedule I supplies UnityEngine.CoreModule and the installed current S1API
+    supplies S1API.dll.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="stubs\UnityEngine.CoreModule\UnityEngine.CoreModule.csproj" Private="false" />
+    <ProjectReference Include="stubs\S1API\S1API.csproj" Private="false" />
   </ItemGroup>
 </Project>
