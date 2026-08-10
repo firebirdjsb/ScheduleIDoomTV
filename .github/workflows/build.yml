@@ -37,8 +37,8 @@ jobs:
           $project = Join-Path $doomDir 'doomgeneric.vcxproj'
           $xml = Get-Content $project -Raw
           $xml = $xml -replace '<ConfigurationType>Application</ConfigurationType>', '<ConfigurationType>DynamicLibrary</ConfigurationType>'
-          # Let the installed Visual Studio choose its current C++ toolset instead of requiring old v141.
-          $xml = $xml -replace '\s*<PlatformToolset>v141</PlatformToolset>', ''
+          # The hosted VS 2026 image includes the MSVC 14.44 x86/x64 toolset, exposed as v143.
+          $xml = $xml -replace '<PlatformToolset>[^<]+</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>'
           Set-Content -Path $project -Value $xml -Encoding UTF8
 
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -48,7 +48,7 @@ jobs:
           $msbuild = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
           if (-not (Test-Path $msbuild)) { throw "MSBuild.exe not found at $msbuild" }
 
-          & $msbuild $project /m /p:Configuration=Release /p:Platform=x64 /p:TargetName=doomgeneric_s1
+          & $msbuild $project /m /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:TargetName=doomgeneric_s1
           if ($LASTEXITCODE -ne 0) { throw "Native DoomGeneric build failed with exit code $LASTEXITCODE" }
 
           $native = Get-ChildItem $doomDir -Recurse -Filter doomgeneric_s1.dll | Select-Object -First 1
