@@ -132,7 +132,7 @@ internal sealed class DoomNativeRuntime : IDisposable
         if (_library != IntPtr.Zero)
             return;
 
-        _library = NativeLibrary.Load(DoomPaths.RuntimePath);
+        _library = System.Runtime.InteropServices.NativeLibrary.Load(DoomPaths.RuntimePath);
         _create = Load<CreateDelegate>("s1doom_create");
         _tick = Load<TickDelegate>("s1doom_tick");
         _key = Load<KeyDelegate>("s1doom_key");
@@ -145,7 +145,7 @@ internal sealed class DoomNativeRuntime : IDisposable
 
     private T Load<T>(string export) where T : Delegate
     {
-        IntPtr address = NativeLibrary.GetExport(_library, export);
+        IntPtr address = System.Runtime.InteropServices.NativeLibrary.GetExport(_library, export);
         return Marshal.GetDelegateForFunctionPointer<T>(address);
     }
 
@@ -163,7 +163,7 @@ internal sealed class DoomNativeRuntime : IDisposable
             _frameHandle.Free();
         if (_library != IntPtr.Zero)
         {
-            NativeLibrary.Free(_library);
+            System.Runtime.InteropServices.NativeLibrary.Free(_library);
             _library = IntPtr.Zero;
         }
     }
