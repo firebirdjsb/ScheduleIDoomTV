@@ -1,17 +1,16 @@
-using HarmonyLib;
 using MelonLoader;
 
 namespace ScheduleIDoomTV;
 
 public sealed class DoomTvMod : MelonMod
 {
-    private Harmony? _harmony;
+    private global::HarmonyLib.Harmony? _harmony;
 
     public override void OnInitializeMelon()
     {
         MelonLogger.Msg("Schedule I - Doom TV 0.2.3-alpha loaded successfully.");
 
-        _harmony = new Harmony("com.firebirdjsb.scheduleidoomtv");
+        _harmony = new global::HarmonyLib.Harmony("com.firebirdjsb.scheduleidoomtv");
         if (DoomTvRegistrationPatch.Install(_harmony))
             MelonLogger.Msg("Doom TV: forced TV-home registration patch installed.");
         else
@@ -26,7 +25,6 @@ public sealed class DoomTvMod : MelonMod
         }
         catch
         {
-            // MelonLoader is already shutting down; nothing useful remains to do.
         }
     }
 }
