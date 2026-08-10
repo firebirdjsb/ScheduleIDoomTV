@@ -6,11 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>ScheduleIDoomTV</AssemblyName>
     <RootNamespace>ScheduleIDoomTV</RootNamespace>
-    <Version>0.2.2-alpha</Version>
+    <Version>0.2.3-alpha</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="LavaGang.MelonLoader" Version="0.7.3" />
+  </ItemGroup>
+
+  <!-- Do not compile stub source files into the mod assembly. -->
+  <ItemGroup>
+    <Compile Remove="stubs\**\*.cs" />
   </ItemGroup>
 
   <!--
