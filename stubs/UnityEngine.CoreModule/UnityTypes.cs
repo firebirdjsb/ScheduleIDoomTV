@@ -86,7 +86,7 @@ public class Texture2D : Texture
     public Texture2D(int width, int height, TextureFormat format, bool mipChain) { }
     public FilterMode filterMode { get; set; }
     public TextureWrapMode wrapMode { get; set; }
-    public void LoadRawTextureData(byte[] data) { }
+    public void LoadRawTextureData(IntPtr data, int size) { }
     public void Apply(bool updateMipmaps = true, bool makeNoLongerReadable = false) { }
 }
 
