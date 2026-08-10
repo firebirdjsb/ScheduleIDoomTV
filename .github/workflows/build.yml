@@ -37,8 +37,9 @@ jobs:
           $project = Join-Path $doomDir 'doomgeneric.vcxproj'
           $xml = Get-Content $project -Raw
           $xml = $xml -replace '<ConfigurationType>Application</ConfigurationType>', '<ConfigurationType>DynamicLibrary</ConfigurationType>'
-          # The hosted VS 2026 image includes the MSVC 14.44 x86/x64 toolset, exposed as v143.
           $xml = $xml -replace '<PlatformToolset>[^<]+</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>'
+          # DoomGeneric uses narrow char paths; avoid TCHAR expanding Win32 file APIs to wchar_t.
+          $xml = $xml -replace '<CharacterSet>Unicode</CharacterSet>', '<CharacterSet>MultiByte</CharacterSet>'
           Set-Content -Path $project -Value $xml -Encoding UTF8
 
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
