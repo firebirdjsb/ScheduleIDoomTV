@@ -4,29 +4,30 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>ScheduleIDoomTV</AssemblyName>
     <RootNamespace>ScheduleIDoomTV</RootNamespace>
-    <Version>0.2.3-alpha</Version>
+    <Version>0.3.0-alpha</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="LavaGang.MelonLoader" Version="0.7.3" />
   </ItemGroup>
 
-  <!-- Do not compile stub source files into the mod assembly. -->
+  <!-- Never compile CI reference-stub source into the mod assembly. -->
   <ItemGroup>
     <Compile Remove="stubs\**\*.cs" />
   </ItemGroup>
 
   <!--
-    CI compiles against tiny API-shape reference assemblies so the repository can
-    build without redistributing Schedule I or Unity binaries. These stubs are
-    compile-time only and are NOT included in the release artifact. At runtime,
-    Schedule I supplies UnityEngine.CoreModule and the installed current S1API
-    supplies S1API.dll.
+    Small compile-time API-shape assemblies let CI build without redistributing
+    Schedule I or Unity game binaries. Private=false keeps them out of the mod
+    artifact. The real assemblies are supplied by Schedule I/MelonLoader/S1API.
   -->
   <ItemGroup>
     <ProjectReference Include="stubs\UnityEngine.CoreModule\UnityEngine.CoreModule.csproj" Private="false" />
+    <ProjectReference Include="stubs\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
+    <ProjectReference Include="stubs\UnityEngine.InputLegacyModule\UnityEngine.InputLegacyModule.csproj" Private="false" />
     <ProjectReference Include="stubs\S1API\S1API.csproj" Private="false" />
   </ItemGroup>
 </Project>
