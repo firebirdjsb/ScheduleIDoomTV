@@ -1,3 +1,5 @@
+using System;
+
 namespace UnityEngine;
 
 public class Object { }
@@ -21,9 +23,12 @@ public class RectTransform : Transform
     public Vector2 offsetMax;
 }
 
+public class CanvasRenderer : Component { }
+
 public class GameObject : Object
 {
     public GameObject(string name = "") { }
+    public GameObject(string name, params Type[] components) { }
     public string name = string.Empty;
     public Transform transform { get; } = null!;
     public T AddComponent<T>() where T : Component => null!;
@@ -38,6 +43,21 @@ public struct Vector2
     public Vector2(float x, float y) { this.x = x; this.y = y; }
     public static Vector2 zero => new(0f, 0f);
     public static Vector2 one => new(1f, 1f);
+}
+
+public struct Rect
+{
+    public float x;
+    public float y;
+    public float width;
+    public float height;
+    public Rect(float x, float y, float width, float height)
+    {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
 }
 
 public enum TextureFormat
