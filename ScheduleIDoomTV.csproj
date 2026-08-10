@@ -27,7 +27,6 @@
   <ItemGroup>
     <ProjectReference Include="stubs\UnityEngine.CoreModule\UnityEngine.CoreModule.csproj" Private="false" />
     <ProjectReference Include="stubs\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
-    <ProjectReference Include="stubs\UnityEngine.InputLegacyModule\UnityEngine.InputLegacyModule.csproj" Private="false" />
     <ProjectReference Include="stubs\S1API\S1API.csproj" Private="false" />
   </ItemGroup>
 </Project>
