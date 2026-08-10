@@ -19,26 +19,91 @@ jobs:
         with:
           dotnet-version: '6.0.x'
 
-      - name: Restore
+      - name: Build native DoomGeneric runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $upstream = Join-Path $env:GITHUB_WORKSPACE 'doomgeneric-upstream'
+          git clone https://github.com/ozkl/doomgeneric.git $upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to clone DoomGeneric.' }
+          Push-Location $upstream
+          git checkout dcb7a8dbc7a16ce3dda29382ac9aae9d77d21284
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to checkout pinned DoomGeneric commit.' }
+          Pop-Location
+
+          $doomDir = Join-Path $upstream 'doomgeneric'
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'native\s1doom_bridge.c') (Join-Path $doomDir 'doomgeneric_win.c') -Force
+
+          $project = Join-Path $doomDir 'doomgeneric.vcxproj'
+          $xml = Get-Content $project -Raw
+          $xml = $xml -replace '<ConfigurationType>Application</ConfigurationType>', '<ConfigurationType>DynamicLibrary</ConfigurationType>'
+          # Let the installed Visual Studio choose its current C++ toolset instead of requiring old v141.
+          $xml = $xml -replace '\s*<PlatformToolset>v141</PlatformToolset>', ''
+          Set-Content -Path $project -Value $xml -Encoding UTF8
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) { throw 'vswhere.exe not found.' }
+          $vs = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if (-not $vs) { throw 'Visual Studio/MSBuild installation not found.' }
+          $msbuild = Join-Path $vs 'MSBuild\Current\Bin\MSBuild.exe'
+          if (-not (Test-Path $msbuild)) { throw "MSBuild.exe not found at $msbuild" }
+
+          & $msbuild $project /m /p:Configuration=Release /p:Platform=x64 /p:TargetName=doomgeneric_s1
+          if ($LASTEXITCODE -ne 0) { throw "Native DoomGeneric build failed with exit code $LASTEXITCODE" }
+
+          $native = Get-ChildItem $doomDir -Recurse -Filter doomgeneric_s1.dll | Select-Object -First 1
+          if (-not $native) { throw 'doomgeneric_s1.dll was not produced.' }
+          Copy-Item $native.FullName (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') -Force
+          Write-Host "Native runtime: $($native.FullName) ($($native.Length) bytes)"
+
+      - name: Restore managed mod
         run: dotnet restore ScheduleIDoomTV.csproj
 
-      - name: Build
+      - name: Build managed mod
         run: dotnet build ScheduleIDoomTV.csproj -c Release --no-restore
 
-      - name: Verify DLL
+      - name: Verify managed DLL
         shell: pwsh
         run: |
           $dll = Get-ChildItem -Recurse -Filter ScheduleIDoomTV.dll | Where-Object { $_.FullName -match 'bin\\Release' } | Select-Object -First 1
           if (-not $dll) { throw 'ScheduleIDoomTV.dll was not produced.' }
-          Write-Host "Built: $($dll.FullName)"
-          Write-Host "Size: $($dll.Length) bytes"
           $bytes = [System.IO.File]::ReadAllBytes($dll.FullName)
-          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Output is not a valid PE file.' }
-          Copy-Item $dll.FullName "$env:GITHUB_WORKSPACE\ScheduleIDoomTV.dll"
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Managed output is not a valid PE file.' }
+          Copy-Item $dll.FullName (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoomTV.dll') -Force
+          Write-Host "Managed mod: $($dll.FullName) ($($dll.Length) bytes)"
 
-      - name: Upload DLL
+      - name: Create SchedualDoomTv install package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:GITHUB_WORKSPACE 'package\SchedualDoomTv'
+          $wad = Join-Path $root 'WAD'
+          $runtime = Join-Path $root 'Runtime'
+          New-Item -ItemType Directory -Force -Path $wad, $runtime | Out-Null
+
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoomTV.dll') (Join-Path $root 'ScheduleIDoomTV.dll')
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'manifest.json') (Join-Path $root 'manifest.json')
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') (Join-Path $runtime 'doomgeneric_s1.dll')
+
+          @'
+          Place your Doom shareware IWAD in this folder and name it exactly:
+
+          Doom1.WAD
+
+          Final path:
+          Schedule I\Mods\SchedualDoomTv\WAD\Doom1.WAD
+          '@ | Set-Content -Path (Join-Path $wad 'PUT_DOOM1_WAD_HERE.txt')
+
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.0-alpha.zip'
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path $root -DestinationPath $zip -CompressionLevel Optimal
+
+          Write-Host 'Package contents:'
+          Get-ChildItem $root -Recurse | ForEach-Object { Write-Host $_.FullName }
+
+      - name: Upload playable test package
         uses: actions/upload-artifact@v4
         with:
-          name: ScheduleIDoomTV-dll
-          path: ScheduleIDoomTV.dll
+          name: SchedualDoomTv-0.3.0-alpha
+          path: SchedualDoomTv-0.3.0-alpha.zip
           if-no-files-found: error
