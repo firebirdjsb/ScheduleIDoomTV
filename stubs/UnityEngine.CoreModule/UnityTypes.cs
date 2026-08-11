@@ -17,10 +17,13 @@ public class Transform : Component
 
 public class RectTransform : Transform
 {
-    public Vector2 anchorMin;
-    public Vector2 anchorMax;
-    public Vector2 offsetMin;
-    public Vector2 offsetMax;
+    // These are Unity properties, not fields. Keeping the CI reference shape
+    // accurate is critical: field stubs compile to ldfld/stfld and fail against
+    // the real IL2CPP UnityEngine.CoreModule at runtime.
+    public Vector2 anchorMin { get; set; }
+    public Vector2 anchorMax { get; set; }
+    public Vector2 offsetMin { get; set; }
+    public Vector2 offsetMax { get; set; }
 }
 
 public class CanvasRenderer : Component { }
@@ -29,7 +32,7 @@ public class GameObject : Object
 {
     public GameObject(string name = "") { }
     public GameObject(string name, params Type[] components) { }
-    public string name = string.Empty;
+    public string name { get; set; } = string.Empty;
     public Transform transform { get; } = null!;
     public T AddComponent<T>() where T : Component => null!;
     public T GetComponent<T>() where T : Component => null!;
