@@ -38,7 +38,6 @@ jobs:
           $xml = Get-Content $project -Raw
           $xml = $xml -replace '<ConfigurationType>Application</ConfigurationType>', '<ConfigurationType>DynamicLibrary</ConfigurationType>'
           $xml = $xml -replace '<PlatformToolset>[^<]+</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>'
-          # DoomGeneric uses narrow char paths; avoid TCHAR expanding Win32 file APIs to wchar_t.
           $xml = $xml -replace '<CharacterSet>Unicode</CharacterSet>', '<CharacterSet>MultiByte</CharacterSet>'
           Set-Content -Path $project -Value $xml -Encoding UTF8
 
@@ -83,8 +82,6 @@ jobs:
           $runtime = Join-Path $dataRoot 'Runtime'
           New-Item -ItemType Directory -Force -Path $mods, $wad, $runtime | Out-Null
 
-          # Keep the Melon DLL directly under Mods so it loads even when
-          # MelonLoader subfolder scanning is disabled.
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoomTV.dll') (Join-Path $mods 'ScheduleIDoomTV.dll')
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') (Join-Path $runtime 'doomgeneric_s1.dll')
 
@@ -97,7 +94,7 @@ jobs:
           Schedule I\Mods\SchedualDoomTv\WAD\Doom1.WAD
           '@ | Set-Content -Path (Join-Path $wad 'PUT_DOOM1_WAD_HERE.txt')
 
-          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.1-alpha.zip'
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.2-alpha.zip'
           if (Test-Path $zip) { Remove-Item $zip -Force }
           Compress-Archive -Path $mods -DestinationPath $zip -CompressionLevel Optimal
 
@@ -107,6 +104,6 @@ jobs:
       - name: Upload corrected playable test package
         uses: actions/upload-artifact@v4
         with:
-          name: SchedualDoomTv-0.3.1-alpha
-          path: SchedualDoomTv-0.3.1-alpha.zip
+          name: SchedualDoomTv-0.3.2-alpha
+          path: SchedualDoomTv-0.3.2-alpha.zip
           if-no-files-found: error
