@@ -73,21 +73,23 @@ jobs:
           Copy-Item $dll.FullName (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoomTV.dll') -Force
           Write-Host "Managed mod: $($dll.FullName) ($($dll.Length) bytes)"
 
-      - name: Create SchedualDoomTv install package
+      - name: Create corrected Mods install package
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $root = Join-Path $env:GITHUB_WORKSPACE 'package\SchedualDoomTv'
-          $wad = Join-Path $root 'WAD'
-          $runtime = Join-Path $root 'Runtime'
-          New-Item -ItemType Directory -Force -Path $wad, $runtime | Out-Null
+          $mods = Join-Path $env:GITHUB_WORKSPACE 'package\Mods'
+          $dataRoot = Join-Path $mods 'SchedualDoomTv'
+          $wad = Join-Path $dataRoot 'WAD'
+          $runtime = Join-Path $dataRoot 'Runtime'
+          New-Item -ItemType Directory -Force -Path $mods, $wad, $runtime | Out-Null
 
-          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoomTV.dll') (Join-Path $root 'ScheduleIDoomTV.dll')
-          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'manifest.json') (Join-Path $root 'manifest.json')
+          # Keep the Melon DLL directly under Mods so it loads even when
+          # MelonLoader subfolder scanning is disabled.
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoomTV.dll') (Join-Path $mods 'ScheduleIDoomTV.dll')
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') (Join-Path $runtime 'doomgeneric_s1.dll')
 
           @'
-          Place your Doom shareware IWAD in this folder and name it exactly:
+          Place your Doom IWAD in this folder and name it exactly:
 
           Doom1.WAD
 
@@ -95,16 +97,16 @@ jobs:
           Schedule I\Mods\SchedualDoomTv\WAD\Doom1.WAD
           '@ | Set-Content -Path (Join-Path $wad 'PUT_DOOM1_WAD_HERE.txt')
 
-          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.0-alpha.zip'
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.1-alpha.zip'
           if (Test-Path $zip) { Remove-Item $zip -Force }
-          Compress-Archive -Path $root -DestinationPath $zip -CompressionLevel Optimal
+          Compress-Archive -Path $mods -DestinationPath $zip -CompressionLevel Optimal
 
           Write-Host 'Package contents:'
-          Get-ChildItem $root -Recurse | ForEach-Object { Write-Host $_.FullName }
+          Get-ChildItem $mods -Recurse | ForEach-Object { Write-Host $_.FullName }
 
-      - name: Upload playable test package
+      - name: Upload corrected playable test package
         uses: actions/upload-artifact@v4
         with:
-          name: SchedualDoomTv-0.3.0-alpha
-          path: SchedualDoomTv-0.3.0-alpha.zip
+          name: SchedualDoomTv-0.3.1-alpha
+          path: SchedualDoomTv-0.3.1-alpha.zip
           if-no-files-found: error
