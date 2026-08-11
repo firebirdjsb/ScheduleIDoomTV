@@ -26,19 +26,48 @@ static volatile LONG s_key_read = 0;
 static int s_initialized = 0;
 static int s_active = 0;
 static volatile LONG s_frame_counter = 0;
+static volatile LONG s_last_exception = 0;
+
+// DoomGeneric stores myargv globally instead of copying it. These therefore MUST
+// outlive s1doom_create(). The previous bridge used a stack-local argv array and
+// the temporary marshaled wad_path pointer, which became invalid as soon as the
+// P/Invoke returned and could crash a later doomgeneric_Tick().
+static char* s_wad_path_owned = NULL;
+static char* s_argv[7] = { 0 };
 
 static void queue_key(int pressed, unsigned char key)
 {
     LONG write = s_key_write;
     LONG next = (write + 1) % KEYQUEUE_SIZE;
 
-    // Drop the oldest event if the queue is full rather than blocking Doom.
     if (next == s_key_read)
         s_key_read = (s_key_read + 1) % KEYQUEUE_SIZE;
 
     s_key_queue[write] = (unsigned short)(((pressed ? 1 : 0) << 8) | key);
     MemoryBarrier();
     s_key_write = next;
+}
+
+static int prepare_arguments(const char* wad_path)
+{
+    if (s_wad_path_owned != NULL)
+    {
+        free(s_wad_path_owned);
+        s_wad_path_owned = NULL;
+    }
+
+    s_wad_path_owned = strdup(wad_path);
+    if (s_wad_path_owned == NULL)
+        return 0;
+
+    s_argv[0] = "ScheduleIDoomTV";
+    s_argv[1] = "-iwad";
+    s_argv[2] = s_wad_path_owned;
+    s_argv[3] = "-nosound";
+    s_argv[4] = "-nomusic";
+    s_argv[5] = "-nogui";
+    s_argv[6] = NULL;
+    return 1;
 }
 
 void DG_Init(void)
@@ -97,17 +126,27 @@ S1DOOM_EXPORT int __cdecl s1doom_create(const char* wad_path)
     if (attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY))
         return -2;
 
-    char* argv[7];
-    argv[0] = "ScheduleIDoomTV";
-    argv[1] = "-iwad";
-    argv[2] = (char*)wad_path;
-    argv[3] = "-nosound";
-    argv[4] = "-nomusic";
-    argv[5] = "-nogui";
-    argv[6] = NULL;
+    if (!prepare_arguments(wad_path))
+        return -3;
 
     s_active = 1;
-    doomgeneric_Create(6, argv);
+    s_last_exception = 0;
+
+#if defined(_MSC_VER)
+    __try
+    {
+        doomgeneric_Create(6, s_argv);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        s_last_exception = (LONG)GetExceptionCode();
+        s_active = 0;
+        return -100;
+    }
+#else
+    doomgeneric_Create(6, s_argv);
+#endif
+
     s_initialized = 1;
     return 1;
 }
@@ -117,13 +156,27 @@ S1DOOM_EXPORT int __cdecl s1doom_tick(void)
     if (!s_initialized || !s_active)
         return 0;
 
+#if defined(_MSC_VER)
+    __try
+    {
+        doomgeneric_Tick();
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        s_last_exception = (LONG)GetExceptionCode();
+        s_active = 0;
+        return -100;
+    }
+#else
     doomgeneric_Tick();
+#endif
+
     return 1;
 }
 
 S1DOOM_EXPORT void __cdecl s1doom_key(int pressed, unsigned char key)
 {
-    if (!s_initialized)
+    if (!s_initialized || !s_active)
         return;
     queue_key(pressed, key);
 }
@@ -139,17 +192,30 @@ S1DOOM_EXPORT int __cdecl s1doom_copy_frame(unsigned char* rgba, int capacity, i
     if (rgba == NULL || capacity < FRAME_BYTES)
         return -1;
 
-    // DoomGeneric's default framebuffer stores 0x00RRGGBB. Convert to opaque RGBA
-    // so Unity's RawImage cannot become transparent because Doom leaves alpha at 0.
-    const uint32_t* src = (const uint32_t*)DG_ScreenBuffer;
-    for (int i = 0; i < FRAME_WIDTH * FRAME_HEIGHT; ++i)
+#if defined(_MSC_VER)
+    __try
     {
-        uint32_t p = src[i];
-        rgba[i * 4 + 0] = (unsigned char)((p >> 16) & 0xff);
-        rgba[i * 4 + 1] = (unsigned char)((p >> 8) & 0xff);
-        rgba[i * 4 + 2] = (unsigned char)(p & 0xff);
-        rgba[i * 4 + 3] = 0xff;
+#endif
+        // DoomGeneric's default framebuffer stores 0x00RRGGBB. Convert to
+        // opaque RGBA so Unity's RawImage never becomes transparent.
+        const uint32_t* src = (const uint32_t*)DG_ScreenBuffer;
+        for (int i = 0; i < FRAME_WIDTH * FRAME_HEIGHT; ++i)
+        {
+            uint32_t p = src[i];
+            rgba[i * 4 + 0] = (unsigned char)((p >> 16) & 0xff);
+            rgba[i * 4 + 1] = (unsigned char)((p >> 8) & 0xff);
+            rgba[i * 4 + 2] = (unsigned char)(p & 0xff);
+            rgba[i * 4 + 3] = 0xff;
+        }
+#if defined(_MSC_VER)
     }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        s_last_exception = (LONG)GetExceptionCode();
+        s_active = 0;
+        return -100;
+    }
+#endif
 
     return FRAME_BYTES;
 }
@@ -168,4 +234,9 @@ S1DOOM_EXPORT void __cdecl s1doom_resume(void)
 S1DOOM_EXPORT int __cdecl s1doom_is_initialized(void)
 {
     return s_initialized;
+}
+
+S1DOOM_EXPORT unsigned long __cdecl s1doom_last_exception(void)
+{
+    return (unsigned long)s_last_exception;
 }
