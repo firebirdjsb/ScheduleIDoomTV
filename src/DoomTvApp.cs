@@ -8,25 +8,29 @@ namespace ScheduleIDoomTV;
 
 public sealed class DoomTvApp : TVApp
 {
+    private static DoomTvApp? _active;
+
     private DoomNativeRuntime? _runtime;
     private Texture2D? _frameTexture;
     private RawImage? _frameImage;
+    private bool _loggedFirstPump;
+    private bool _loggedFirstFrame;
 
     protected override string AppName => "ScheduleIDoomTV.Doom";
     protected override string AppTitle => "DOOM";
     protected override Sprite Icon => DoomIconFactory.GetOrCreate()!;
 
+    internal static void PumpActiveFromMelon()
+    {
+        _active?.PumpFrame();
+    }
+
     protected override void OnCreatedUI(GameObject container)
     {
-        // Do not allow a framebuffer compatibility problem to abort TV app
-        // registration. S1API creates the home-screen button only after this
-        // method returns successfully, so failures here are contained and logged.
         try
         {
-            // Match S1API's IL2CPP-safe UI construction style. RawImage/Graphic
-            // declares the CanvasRenderer it needs on the real Unity UI side, so
-            // do NOT reference CanvasRenderer directly from our managed assembly.
             GameObject framebuffer = new("DoomFramebuffer");
+            framebuffer.layer = container.layer;
             framebuffer.transform.SetParent(container.transform, false);
 
             RectTransform rect = framebuffer.AddComponent<RectTransform>();
@@ -48,7 +52,7 @@ public sealed class DoomTvApp : TVApp
             };
             _frameImage.texture = _frameTexture;
 
-            MelonLogger.Msg("Doom TV: 640x400 framebuffer UI created.");
+            MelonLogger.Msg("Doom TV: 640x400 framebuffer UI created on TV layer.");
         }
         catch (Exception ex)
         {
@@ -68,18 +72,39 @@ public sealed class DoomTvApp : TVApp
             return;
         }
 
+        _active = this;
+        _loggedFirstPump = false;
+        _loggedFirstFrame = false;
+        DoomInputOwnershipService.Acquire();
+
         if (_frameTexture == null)
             MelonLogger.Warning("Doom TV: native DOOM started, but the TV framebuffer is unavailable. Check the preceding framebuffer compatibility error.");
 
-        MelonLogger.Msg("Doom TV: DOOM app opened. Controls: WASD/arrows move/turn, Ctrl or left mouse fires, E/Space uses, Shift runs, Q opens Doom menu, Esc returns to TV menu.");
+        MelonLogger.Msg("Doom TV: DOOM app opened. Melon main-loop frame pump is active.");
+        MelonLogger.Msg("Doom TV: controls: WASD/arrows move/turn, Ctrl or left mouse fires, E/Space uses, Shift runs, Q opens Doom menu, Esc returns to TV menu.");
     }
 
-    protected override unsafe void OnUpdate()
+    // S1API still invokes this, but frame pumping is intentionally owned by the
+    // MelonMod OnUpdate callback to guarantee one stable main-thread update path.
+    protected override void OnUpdate() { }
+
+    private unsafe void PumpFrame()
     {
-        if (_runtime == null || !_runtime.IsRunning || _frameTexture == null)
+        if (_runtime == null || !_runtime.IsRunning)
             return;
 
+        DoomInputOwnershipService.Maintain();
         DoomInputService.Update(_runtime);
+
+        if (!_loggedFirstPump)
+        {
+            _loggedFirstPump = true;
+            MelonLogger.Msg("Doom TV: first Melon-driven DOOM update reached.");
+        }
+
+        if (_frameTexture == null)
+            return;
+
         if (!_runtime.TickAndCapture())
             return;
 
@@ -89,11 +114,21 @@ public sealed class DoomTvApp : TVApp
             _frameTexture.LoadRawTextureData((IntPtr)ptr, frame.Length);
         }
         _frameTexture.Apply(false, false);
+
+        if (!_loggedFirstFrame)
+        {
+            _loggedFirstFrame = true;
+            MelonLogger.Msg($"Doom TV: first native framebuffer uploaded to TV (frame {_runtime.LastCapturedFrameNumber}).");
+        }
     }
 
     protected override void OnClosed()
     {
+        if (ReferenceEquals(_active, this))
+            _active = null;
+
+        DoomInputOwnershipService.Release();
         _runtime?.Pause();
-        MelonLogger.Msg("Doom TV: DOOM paused; returning to TV home screen.");
+        MelonLogger.Msg("Doom TV: DOOM paused; Schedule I movement restored; returning to TV home screen.");
     }
 }
