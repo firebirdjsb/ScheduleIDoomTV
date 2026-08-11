@@ -2,7 +2,10 @@ using UnityEngine;
 
 namespace UnityEngine.UI;
 
-public class Graphic : Component { }
+public class Graphic : Component
+{
+    public Color color { get; set; }
+}
 
 public class RawImage : Graphic
 {
