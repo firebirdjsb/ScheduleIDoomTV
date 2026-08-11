@@ -92,13 +92,13 @@ jobs:
           Schedule I\Mods\SchedualDoomTv\WAD\Doom1.WAD
           '@ | Set-Content -Path (Join-Path $wad 'PUT_DOOM1_WAD_HERE.txt')
 
-          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.4-alpha.zip'
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.5-alpha.zip'
           if (Test-Path $zip) { Remove-Item $zip -Force }
           Compress-Archive -Path $mods -DestinationPath $zip -CompressionLevel Optimal
 
       - name: Upload corrected playable test package
         uses: actions/upload-artifact@v4
         with:
-          name: SchedualDoomTv-0.3.4-alpha
-          path: SchedualDoomTv-0.3.4-alpha.zip
+          name: SchedualDoomTv-0.3.5-alpha
+          path: SchedualDoomTv-0.3.5-alpha.zip
           if-no-files-found: error
