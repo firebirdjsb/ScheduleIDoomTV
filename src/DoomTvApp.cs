@@ -18,20 +18,20 @@ public sealed class DoomTvApp : TVApp
 
     protected override void OnCreatedUI(GameObject container)
     {
-        GameObject framebuffer = new(
-            "DoomFramebuffer",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(RawImage));
+        // Match S1API's own IL2CPP-safe UI construction style: create a plain
+        // GameObject, parent it, then add the RectTransform/components explicitly.
+        GameObject framebuffer = new("DoomFramebuffer");
         framebuffer.transform.SetParent(container.transform, false);
 
-        RectTransform rect = framebuffer.GetComponent<RectTransform>();
+        RectTransform rect = framebuffer.AddComponent<RectTransform>();
         rect.anchorMin = Vector2.zero;
         rect.anchorMax = Vector2.one;
         rect.offsetMin = Vector2.zero;
         rect.offsetMax = Vector2.zero;
 
-        _frameImage = framebuffer.GetComponent<RawImage>();
+        framebuffer.AddComponent<CanvasRenderer>();
+        _frameImage = framebuffer.AddComponent<RawImage>();
+
         _frameTexture = new Texture2D(
             DoomNativeRuntime.Width,
             DoomNativeRuntime.Height,
