@@ -26,8 +26,6 @@ internal static class DoomIconFactory
             DrawRect(pixels, width, height, 3, 3, width - 6, height - 6, 190, 58, 24, 255);
             DrawRect(pixels, width, height, 6, 6, width - 12, height - 12, 34, 18, 14, 255);
 
-            // Four 5-column glyphs with one-column spacing = 23 columns total.
-            // At 3 px per column the word is 69 px wide, centered inside 96 px.
             DrawWordDoom(pixels, width, height, 13, 18, 3, 4);
 
             Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
@@ -92,12 +90,14 @@ internal static class DoomIconFactory
 
     private static void DrawWordDoom(byte[] p, int w, int h, int x, int y, int scaleX, int scaleY)
     {
+        // Unity presents our raw texture rows vertically flipped. D/O are
+        // vertically symmetric, but M is not, so the source M is pre-flipped.
         string[] glyphs =
         {
             "11110|10001|10001|10001|10001|10001|11110",
             "01110|10001|10001|10001|10001|10001|01110",
             "01110|10001|10001|10001|10001|10001|01110",
-            "10001|11011|10101|10101|10001|10001|10001"
+            "10001|10001|10001|10101|10101|11011|10001"
         };
 
         int cursor = x;
