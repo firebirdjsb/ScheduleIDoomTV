@@ -9,7 +9,7 @@ public sealed class DoomTvMod : MelonMod
     public override void OnInitializeMelon()
     {
         DoomPaths.EnsureDirectories();
-        MelonLogger.Msg("Schedule I - Doom TV 0.3.3-alpha loaded successfully.");
+        MelonLogger.Msg("Schedule I - Doom TV 0.3.4-alpha loaded successfully.");
         MelonLogger.Msg($"Doom TV: looking for Doom1.WAD at {DoomPaths.WadPath}");
         MelonLogger.Msg($"Doom TV: looking for native runtime at {DoomPaths.RuntimePath}");
 
