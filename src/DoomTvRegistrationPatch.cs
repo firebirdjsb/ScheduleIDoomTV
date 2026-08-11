@@ -16,8 +16,8 @@ internal static class DoomTvRegistrationPatch
 
     internal static bool Install(global::HarmonyLib.Harmony harmony)
     {
-        Type? homeType = AccessTools.TypeByName("Il2CppScheduleOne.TV.TVHomeScreen")
-                         ?? AccessTools.TypeByName("ScheduleOne.TV.TVHomeScreen");
+        Type? homeType = ResolveGameType("Il2CppScheduleOne.TV.TVHomeScreen")
+                         ?? ResolveGameType("ScheduleOne.TV.TVHomeScreen");
 
         if (homeType == null)
         {
@@ -25,19 +25,41 @@ internal static class DoomTvRegistrationPatch
             return false;
         }
 
-        MethodInfo? open = AccessTools.Method(homeType, "Open");
+        MethodInfo? open = homeType.GetMethod("Open", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         if (open == null)
         {
             MelonLogger.Error($"Doom TV: found {homeType.FullName}, but its Open method was not found.");
             return false;
         }
 
-        MethodInfo postfix = AccessTools.Method(typeof(DoomTvRegistrationPatch), nameof(OnHomeScreenOpened));
+        MethodInfo postfix = typeof(DoomTvRegistrationPatch).GetMethod(nameof(OnHomeScreenOpened), BindingFlags.Static | BindingFlags.NonPublic)!;
         harmony.Patch(open, postfix: new HarmonyMethod(postfix));
 
         CacheS1ApiMethods();
         MelonLogger.Msg($"Doom TV: patched {homeType.FullName}.Open for forced TV-app registration.");
         return true;
+    }
+
+    private static Type? ResolveGameType(string fullName)
+    {
+        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            try
+            {
+                string? name = assembly.GetName().Name;
+                if (!string.Equals(name, "Assembly-CSharp", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                Type? type = assembly.GetType(fullName, false, false);
+                if (type != null)
+                    return type;
+            }
+            catch
+            {
+            }
+        }
+
+        return null;
     }
 
     private static void CacheS1ApiMethods()
