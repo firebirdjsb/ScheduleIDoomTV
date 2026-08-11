@@ -25,6 +25,8 @@ internal sealed class DoomNativeRuntime : IDisposable
     private delegate void ResumeDelegate();
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate int IsInitializedDelegate();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate uint LastExceptionDelegate();
 
     private IntPtr _library;
     private CreateDelegate? _create;
@@ -34,6 +36,7 @@ internal sealed class DoomNativeRuntime : IDisposable
     private PauseDelegate? _pause;
     private ResumeDelegate? _resume;
     private IsInitializedDelegate? _isInitialized;
+    private LastExceptionDelegate? _lastException;
     private readonly byte[] _frame = new byte[FrameBytes];
     private GCHandle _frameHandle;
     private int _lastFrameNumber = -1;
@@ -68,7 +71,7 @@ internal sealed class DoomNativeRuntime : IDisposable
 
             int result = _create!(DoomPaths.WadPath);
             if (result <= 0)
-                return Fail($"doomgeneric_s1.dll rejected Doom1.WAD (error {result}).");
+                return Fail(DescribeNativeFailure("create", result));
 
             IsRunning = true;
             MelonLogger.Msg($"Doom TV: DOOM started from {DoomPaths.WadPath}");
@@ -85,15 +88,39 @@ internal sealed class DoomNativeRuntime : IDisposable
         if (!IsRunning || _tick == null || _copyFrame == null)
             return false;
 
+        int tickResult;
         try
         {
-            if (_tick() <= 0)
-                return false;
+            tickResult = _tick();
+        }
+        catch (Exception ex)
+        {
+            Fail($"Native DOOM tick invocation failed: {ex}");
+            IsRunning = false;
+            return false;
+        }
 
+        if (tickResult <= 0)
+        {
+            if (tickResult < 0)
+                Fail(DescribeNativeFailure("tick", tickResult));
+            IsRunning = false;
+            return false;
+        }
+
+        try
+        {
             int width;
             int height;
             int frameNumber;
             int copied = _copyFrame(_frameHandle.AddrOfPinnedObject(), _frame.Length, out width, out height, out frameNumber);
+            if (copied < 0)
+            {
+                Fail(DescribeNativeFailure("frame copy", copied));
+                IsRunning = false;
+                return false;
+            }
+
             if (copied != FrameBytes || width != Width || height != Height)
                 return false;
 
@@ -105,7 +132,7 @@ internal sealed class DoomNativeRuntime : IDisposable
         }
         catch (Exception ex)
         {
-            Fail($"Native DOOM tick failed: {ex}");
+            Fail($"Native DOOM frame capture failed: {ex}");
             IsRunning = false;
             return false;
         }
@@ -140,6 +167,7 @@ internal sealed class DoomNativeRuntime : IDisposable
         _pause = Load<PauseDelegate>("s1doom_pause");
         _resume = Load<ResumeDelegate>("s1doom_resume");
         _isInitialized = Load<IsInitializedDelegate>("s1doom_is_initialized");
+        _lastException = Load<LastExceptionDelegate>("s1doom_last_exception");
         _frameHandle = GCHandle.Alloc(_frame, GCHandleType.Pinned);
     }
 
@@ -147,6 +175,16 @@ internal sealed class DoomNativeRuntime : IDisposable
     {
         IntPtr address = System.Runtime.InteropServices.NativeLibrary.GetExport(_library, export);
         return Marshal.GetDelegateForFunctionPointer<T>(address);
+    }
+
+    private string DescribeNativeFailure(string operation, int result)
+    {
+        uint code = 0;
+        try { code = _lastException?.Invoke() ?? 0; } catch { }
+
+        return code != 0
+            ? $"Native DOOM {operation} failed (result {result}, SEH 0x{code:X8})."
+            : $"Native DOOM {operation} failed (result {result}).";
     }
 
     private bool Fail(string message)
