@@ -44,6 +44,7 @@ internal sealed class DoomNativeRuntime : IDisposable
     internal bool IsLoaded => _library != IntPtr.Zero;
     internal bool IsRunning { get; private set; }
     internal byte[] Frame => _frame;
+    internal int LastCapturedFrameNumber => _lastFrameNumber;
     internal string? LastError { get; private set; }
 
     internal bool Start()
