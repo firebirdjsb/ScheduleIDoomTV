@@ -18,32 +18,44 @@ public sealed class DoomTvApp : TVApp
 
     protected override void OnCreatedUI(GameObject container)
     {
-        // Match S1API's own IL2CPP-safe UI construction style: create a plain
-        // GameObject, parent it, then add the RectTransform/components explicitly.
-        GameObject framebuffer = new("DoomFramebuffer");
-        framebuffer.transform.SetParent(container.transform, false);
-
-        RectTransform rect = framebuffer.AddComponent<RectTransform>();
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-
-        framebuffer.AddComponent<CanvasRenderer>();
-        _frameImage = framebuffer.AddComponent<RawImage>();
-
-        _frameTexture = new Texture2D(
-            DoomNativeRuntime.Width,
-            DoomNativeRuntime.Height,
-            TextureFormat.RGBA32,
-            false)
+        // Do not allow a framebuffer compatibility problem to abort TV app
+        // registration. S1API creates the home-screen button only after this
+        // method returns successfully, so failures here are contained and logged.
+        try
         {
-            filterMode = FilterMode.Point,
-            wrapMode = TextureWrapMode.Clamp
-        };
-        _frameImage.texture = _frameTexture;
+            // Match S1API's IL2CPP-safe UI construction style. RawImage/Graphic
+            // declares the CanvasRenderer it needs on the real Unity UI side, so
+            // do NOT reference CanvasRenderer directly from our managed assembly.
+            GameObject framebuffer = new("DoomFramebuffer");
+            framebuffer.transform.SetParent(container.transform, false);
 
-        MelonLogger.Msg("Doom TV: 640x400 framebuffer UI created.");
+            RectTransform rect = framebuffer.AddComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            _frameImage = framebuffer.AddComponent<RawImage>();
+
+            _frameTexture = new Texture2D(
+                DoomNativeRuntime.Width,
+                DoomNativeRuntime.Height,
+                TextureFormat.RGBA32,
+                false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            _frameImage.texture = _frameTexture;
+
+            MelonLogger.Msg("Doom TV: 640x400 framebuffer UI created.");
+        }
+        catch (Exception ex)
+        {
+            _frameImage = null;
+            _frameTexture = null;
+            MelonLogger.Error($"Doom TV: framebuffer UI creation failed, but TV app registration will continue: {ex}");
+        }
     }
 
     protected override void OnOpened()
@@ -55,6 +67,9 @@ public sealed class DoomTvApp : TVApp
             MelonLogger.Error($"Doom TV: expected runtime: {DoomPaths.RuntimePath}");
             return;
         }
+
+        if (_frameTexture == null)
+            MelonLogger.Warning("Doom TV: native DOOM started, but the TV framebuffer is unavailable. Check the preceding framebuffer compatibility error.");
 
         MelonLogger.Msg("Doom TV: DOOM app opened. Controls: WASD/arrows move/turn, Ctrl or left mouse fires, E/Space uses, Shift runs, Q opens Doom menu, Esc returns to TV menu.");
     }
