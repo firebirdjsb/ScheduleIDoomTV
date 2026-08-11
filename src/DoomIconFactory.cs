@@ -22,14 +22,13 @@ internal static class DoomIconFactory
             const int height = 64;
             byte[] pixels = new byte[width * height * 4];
 
-            // Dark TV-tile background with a warm border.
             Fill(pixels, width, height, 12, 10, 10, 255);
             DrawRect(pixels, width, height, 3, 3, width - 6, height - 6, 190, 58, 24, 255);
             DrawRect(pixels, width, height, 6, 6, width - 12, height - 12, 34, 18, 14, 255);
 
-            // Compact block-letter DOOM mark. This is original pixel art generated
-            // by the mod, not an embedded commercial game asset.
-            DrawWordDoom(pixels, width, height, 14, 20, 5, 5);
+            // Four 5-column glyphs with one-column spacing = 23 columns total.
+            // At 3 px per column the word is 69 px wide, centered inside 96 px.
+            DrawWordDoom(pixels, width, height, 13, 18, 3, 4);
 
             Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
             {
@@ -95,10 +94,10 @@ internal static class DoomIconFactory
     {
         string[] glyphs =
         {
-            "11110|10001|10001|10001|10001|10001|11110", // D
-            "01110|10001|10001|10001|10001|10001|01110", // O
-            "01110|10001|10001|10001|10001|10001|01110", // O
-            "10001|11011|10101|10101|10001|10001|10001"  // M
+            "11110|10001|10001|10001|10001|10001|11110",
+            "01110|10001|10001|10001|10001|10001|01110",
+            "01110|10001|10001|10001|10001|10001|01110",
+            "10001|11011|10101|10101|10001|10001|10001"
         };
 
         int cursor = x;
@@ -111,7 +110,7 @@ internal static class DoomIconFactory
                 {
                     if (rows[gy][gx] != '1')
                         continue;
-                    DrawRect(p, w, h, cursor + gx * scaleX, y + gy * scaleY, scaleX - 1, scaleY - 1, 232, 112, 38, 255);
+                    DrawRect(p, w, h, cursor + gx * scaleX, y + gy * scaleY, Math.Max(1, scaleX - 1), Math.Max(1, scaleY - 1), 232, 112, 38, 255);
                 }
             }
             cursor += 6 * scaleX;
