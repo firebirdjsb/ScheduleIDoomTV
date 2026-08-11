@@ -27,11 +27,6 @@ static int s_initialized = 0;
 static int s_active = 0;
 static volatile LONG s_frame_counter = 0;
 static volatile LONG s_last_exception = 0;
-
-// DoomGeneric stores myargv globally instead of copying it. These therefore MUST
-// outlive s1doom_create(). The previous bridge used a stack-local argv array and
-// the temporary marshaled wad_path pointer, which became invalid as soon as the
-// P/Invoke returned and could crash a later doomgeneric_Tick().
 static char* s_wad_path_owned = NULL;
 static char* s_argv[7] = { 0 };
 
@@ -39,10 +34,8 @@ static void queue_key(int pressed, unsigned char key)
 {
     LONG write = s_key_write;
     LONG next = (write + 1) % KEYQUEUE_SIZE;
-
     if (next == s_key_read)
         s_key_read = (s_key_read + 1) % KEYQUEUE_SIZE;
-
     s_key_queue[write] = (unsigned short)(((pressed ? 1 : 0) << 8) | key);
     MemoryBarrier();
     s_key_write = next;
@@ -55,11 +48,9 @@ static int prepare_arguments(const char* wad_path)
         free(s_wad_path_owned);
         s_wad_path_owned = NULL;
     }
-
     s_wad_path_owned = strdup(wad_path);
     if (s_wad_path_owned == NULL)
         return 0;
-
     s_argv[0] = "ScheduleIDoomTV";
     s_argv[1] = "-iwad";
     s_argv[2] = s_wad_path_owned;
@@ -77,66 +68,35 @@ void DG_Init(void)
     s_key_read = 0;
 }
 
-void DG_DrawFrame(void)
-{
-    InterlockedIncrement(&s_frame_counter);
-}
-
-void DG_SleepMs(uint32_t ms)
-{
-    Sleep(ms);
-}
-
-uint32_t DG_GetTicksMs(void)
-{
-    return (uint32_t)GetTickCount64();
-}
+void DG_DrawFrame(void) { InterlockedIncrement(&s_frame_counter); }
+void DG_SleepMs(uint32_t ms) { Sleep(ms); }
+uint32_t DG_GetTicksMs(void) { return (uint32_t)GetTickCount64(); }
 
 int DG_GetKey(int* pressed, unsigned char* doomKey)
 {
     LONG read = s_key_read;
     if (read == s_key_write)
         return 0;
-
     unsigned short data = s_key_queue[read];
     s_key_read = (read + 1) % KEYQUEUE_SIZE;
-
     *pressed = (data >> 8) & 1;
     *doomKey = (unsigned char)(data & 0xff);
     return 1;
 }
 
-void DG_SetWindowTitle(const char* title)
-{
-    (void)title;
-}
+void DG_SetWindowTitle(const char* title) { (void)title; }
 
 S1DOOM_EXPORT int __cdecl s1doom_create(const char* wad_path)
 {
-    if (s_initialized)
-    {
-        s_active = 1;
-        return 1;
-    }
-
-    if (wad_path == NULL || wad_path[0] == '\0')
-        return -1;
-
+    if (s_initialized) { s_active = 1; return 1; }
+    if (wad_path == NULL || wad_path[0] == '\0') return -1;
     DWORD attrs = GetFileAttributesA(wad_path);
-    if (attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY))
-        return -2;
-
-    if (!prepare_arguments(wad_path))
-        return -3;
-
+    if (attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY)) return -2;
+    if (!prepare_arguments(wad_path)) return -3;
     s_active = 1;
     s_last_exception = 0;
-
 #if defined(_MSC_VER)
-    __try
-    {
-        doomgeneric_Create(6, s_argv);
-    }
+    __try { doomgeneric_Create(6, s_argv); }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
         s_last_exception = (LONG)GetExceptionCode();
@@ -146,21 +106,15 @@ S1DOOM_EXPORT int __cdecl s1doom_create(const char* wad_path)
 #else
     doomgeneric_Create(6, s_argv);
 #endif
-
     s_initialized = 1;
     return 1;
 }
 
 S1DOOM_EXPORT int __cdecl s1doom_tick(void)
 {
-    if (!s_initialized || !s_active)
-        return 0;
-
+    if (!s_initialized || !s_active) return 0;
 #if defined(_MSC_VER)
-    __try
-    {
-        doomgeneric_Tick();
-    }
+    __try { doomgeneric_Tick(); }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
         s_last_exception = (LONG)GetExceptionCode();
@@ -170,15 +124,12 @@ S1DOOM_EXPORT int __cdecl s1doom_tick(void)
 #else
     doomgeneric_Tick();
 #endif
-
     return 1;
 }
 
 S1DOOM_EXPORT void __cdecl s1doom_key(int pressed, unsigned char key)
 {
-    if (!s_initialized || !s_active)
-        return;
-    queue_key(pressed, key);
+    if (s_initialized && s_active) queue_key(pressed, key);
 }
 
 S1DOOM_EXPORT int __cdecl s1doom_copy_frame(unsigned char* rgba, int capacity, int* width, int* height, int* frame_number)
@@ -186,26 +137,25 @@ S1DOOM_EXPORT int __cdecl s1doom_copy_frame(unsigned char* rgba, int capacity, i
     if (width) *width = FRAME_WIDTH;
     if (height) *height = FRAME_HEIGHT;
     if (frame_number) *frame_number = (int)s_frame_counter;
-
-    if (!s_initialized || DG_ScreenBuffer == NULL)
-        return 0;
-    if (rgba == NULL || capacity < FRAME_BYTES)
-        return -1;
-
+    if (!s_initialized || DG_ScreenBuffer == NULL) return 0;
+    if (rgba == NULL || capacity < FRAME_BYTES) return -1;
 #if defined(_MSC_VER)
     __try
     {
 #endif
-        // DoomGeneric's default framebuffer stores 0x00RRGGBB. Convert to
-        // opaque RGBA so Unity's RawImage never becomes transparent.
         const uint32_t* src = (const uint32_t*)DG_ScreenBuffer;
-        for (int i = 0; i < FRAME_WIDTH * FRAME_HEIGHT; ++i)
+        for (int y = 0; y < FRAME_HEIGHT; ++y)
         {
-            uint32_t p = src[i];
-            rgba[i * 4 + 0] = (unsigned char)((p >> 16) & 0xff);
-            rgba[i * 4 + 1] = (unsigned char)((p >> 8) & 0xff);
-            rgba[i * 4 + 2] = (unsigned char)(p & 0xff);
-            rgba[i * 4 + 3] = 0xff;
+            int dstY = FRAME_HEIGHT - 1 - y;
+            for (int x = 0; x < FRAME_WIDTH; ++x)
+            {
+                uint32_t p = src[y * FRAME_WIDTH + x];
+                int d = (dstY * FRAME_WIDTH + x) * 4;
+                rgba[d + 0] = (unsigned char)((p >> 16) & 0xff);
+                rgba[d + 1] = (unsigned char)((p >> 8) & 0xff);
+                rgba[d + 2] = (unsigned char)(p & 0xff);
+                rgba[d + 3] = 0xff;
+            }
         }
 #if defined(_MSC_VER)
     }
@@ -216,27 +166,10 @@ S1DOOM_EXPORT int __cdecl s1doom_copy_frame(unsigned char* rgba, int capacity, i
         return -100;
     }
 #endif
-
     return FRAME_BYTES;
 }
 
-S1DOOM_EXPORT void __cdecl s1doom_pause(void)
-{
-    s_active = 0;
-}
-
-S1DOOM_EXPORT void __cdecl s1doom_resume(void)
-{
-    if (s_initialized)
-        s_active = 1;
-}
-
-S1DOOM_EXPORT int __cdecl s1doom_is_initialized(void)
-{
-    return s_initialized;
-}
-
-S1DOOM_EXPORT unsigned long __cdecl s1doom_last_exception(void)
-{
-    return (unsigned long)s_last_exception;
-}
+S1DOOM_EXPORT void __cdecl s1doom_pause(void) { s_active = 0; }
+S1DOOM_EXPORT void __cdecl s1doom_resume(void) { if (s_initialized) s_active = 1; }
+S1DOOM_EXPORT int __cdecl s1doom_is_initialized(void) { return s_initialized; }
+S1DOOM_EXPORT unsigned long __cdecl s1doom_last_exception(void) { return (unsigned long)s_last_exception; }
