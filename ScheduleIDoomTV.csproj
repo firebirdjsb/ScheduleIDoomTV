@@ -7,23 +7,17 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>ScheduleIDoomTV</AssemblyName>
     <RootNamespace>ScheduleIDoomTV</RootNamespace>
-    <Version>0.3.1-alpha</Version>
+    <Version>0.3.2-alpha</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="LavaGang.MelonLoader" Version="0.7.3" />
   </ItemGroup>
 
-  <!-- Never compile CI reference-stub source into the mod assembly. -->
   <ItemGroup>
     <Compile Remove="stubs\**\*.cs" />
   </ItemGroup>
 
-  <!--
-    Small compile-time API-shape assemblies let CI build without redistributing
-    Schedule I or Unity game binaries. Private=false keeps them out of the mod
-    artifact. The real assemblies are supplied by Schedule I/MelonLoader/S1API.
-  -->
   <ItemGroup>
     <ProjectReference Include="stubs\UnityEngine.CoreModule\UnityEngine.CoreModule.csproj" Private="false" />
     <ProjectReference Include="stubs\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
