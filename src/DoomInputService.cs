@@ -5,6 +5,14 @@ namespace ScheduleIDoom3TV;
 
 internal static class DoomInputService
 {
+    internal enum SelectionAction
+    {
+        None,
+        Previous,
+        Next,
+        Confirm
+    }
+
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
 
@@ -53,6 +61,46 @@ internal static class DoomInputService
         new((byte)'7', 0x37)
     };
 
+    private static bool _selectionPreviousDown;
+    private static bool _selectionNextDown;
+    private static bool _selectionConfirmDown;
+    private static readonly int[] SelectionPreviousKeys = { 0x26, 0x57 };
+    private static readonly int[] SelectionNextKeys = { 0x28, 0x53 };
+    private static readonly int[] SelectionConfirmKeys = { 0x0D };
+
+    internal static void BeginSelection()
+    {
+        _selectionPreviousDown = IsAnyKeyDown(SelectionPreviousKeys);
+        _selectionNextDown = IsAnyKeyDown(SelectionNextKeys);
+        _selectionConfirmDown = IsAnyKeyDown(SelectionConfirmKeys);
+    }
+
+    internal static SelectionAction PollSelection()
+    {
+        bool previous = IsAnyKeyDown(SelectionPreviousKeys);
+        bool next = IsAnyKeyDown(SelectionNextKeys);
+        bool confirm = IsAnyKeyDown(SelectionConfirmKeys);
+
+        SelectionAction action = SelectionAction.None;
+        if (confirm && !_selectionConfirmDown)
+            action = SelectionAction.Confirm;
+        else if (previous && !_selectionPreviousDown)
+            action = SelectionAction.Previous;
+        else if (next && !_selectionNextDown)
+            action = SelectionAction.Next;
+
+        _selectionPreviousDown = previous;
+        _selectionNextDown = next;
+        _selectionConfirmDown = confirm;
+        return action;
+    }
+
+    internal static void SynchronizeGameBindings()
+    {
+        foreach (Binding binding in Bindings)
+            binding.Down = IsAnyKeyDown(binding.VirtualKeys);
+    }
+
     internal static void Update(DoomNativeRuntime runtime)
     {
         foreach (Binding binding in Bindings)
@@ -84,5 +132,16 @@ internal static class DoomInputService
             binding.Down = false;
             runtime.SendKey(false, binding.DoomKey);
         }
+    }
+
+    private static bool IsAnyKeyDown(params int[] virtualKeys)
+    {
+        foreach (int key in virtualKeys)
+        {
+            if ((GetAsyncKeyState(key) & 0x8000) != 0)
+                return true;
+        }
+
+        return false;
     }
 }

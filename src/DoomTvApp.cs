@@ -18,7 +18,7 @@ public sealed class DoomTvApp : TVApp
     private static readonly List<DoomTvApp> Instances = new();
 
     private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
-    private readonly DoomWadProfile _profile;
+    private readonly List<DoomWadProfile> _availableProfiles = new();
     private GameObject? _uiContainer;
     private GameObject? _displayRoot;
     private DoomNativeRuntime? _runtime;
@@ -29,23 +29,20 @@ public sealed class DoomTvApp : TVApp
     private bool _loggedFirstPump;
     private bool _loggedFirstFrame;
     private bool _loggedFrameStats;
+    private byte[]? _selectorFrame;
+    private int _selectedProfileIndex;
+    private bool _selectingWad;
+    private string? _selectorStatus;
 
-    protected override string AppName => _profile.AppId;
-    protected override string AppTitle => _profile.Title;
+    protected override string AppName => DoomEdition.AppId;
+    protected override string AppTitle => DoomEdition.GameTitle;
     protected override Sprite Icon => DoomIconFactory.GetOrCreate()!;
 
-    public DoomTvApp() : this(DoomWadProfile.Doom3)
+    public DoomTvApp()
     {
-    }
-
-    internal DoomTvApp(DoomWadProfile profile)
-    {
-        _profile = profile;
         lock (InstancesLock)
             Instances.Add(this);
     }
-
-    internal string ProfileAppId => _profile.AppId;
 
     internal static int AttachAllToGameCanvas(object homeScreen)
     {
@@ -98,14 +95,6 @@ public sealed class DoomTvApp : TVApp
 
     protected override void OnOpened()
     {
-        _runtime ??= new DoomNativeRuntime(_profile);
-        if (!_runtime.Start())
-        {
-            MelonLogger.Error($"Doom TV[{_instanceId}]: cannot launch {_profile.Title}. Expected WAD: {_profile.WadPath}");
-            MelonLogger.Error($"Doom TV[{_instanceId}]: expected runtime: {DoomPaths.RuntimePath}");
-            return;
-        }
-
         _active = this;
         _loggedFirstPump = false;
         _loggedFirstFrame = false;
@@ -113,23 +102,35 @@ public sealed class DoomTvApp : TVApp
         SynchronizeContainerLayer();
         BindToOwnAppCanvas();
         _displayRoot?.SetActive(true);
-        if (_frameImage != null && _frameTexture != null)
-        {
-            _frameImage.color = Color.white;
-            _frameImage.texture = _frameTexture;
-            _frameImage.uvRect = new Rect(0f, 0f, 1f, 1f);
-            StretchDisplayToParent();
-            UploadDiagnosticPattern();
-            _diagnosticFramesRemaining = DiagnosticHoldFrames;
-            MelonLogger.Msg($"Doom TV[{_instanceId}]: holding diagnostic checkerboard for {DiagnosticHoldFrames} Melon frames before showing native DOOM.");
-        }
+        PrepareDisplay();
         DoomInputOwnershipService.Acquire();
 
         if (_frameTexture == null)
-            MelonLogger.Warning($"Doom TV[{_instanceId}]: native DOOM started, but the TV framebuffer is unavailable.");
+            MelonLogger.Warning($"Doom TV[{_instanceId}]: the TV framebuffer is unavailable.");
+
+        _availableProfiles.Clear();
+        foreach (DoomWadProfile profile in DoomWadProfile.All)
+        {
+            if (profile.IsInstalled)
+                _availableProfiles.Add(profile);
+        }
+
+        if (_availableProfiles.Count == 0)
+        {
+            ShowSelector("NO SUPPORTED WAD IS INSTALLED");
+        }
+        else if (_availableProfiles.Count > 1 && _frameTexture != null)
+        {
+            ShowSelector(null);
+        }
+        else
+        {
+            if (_availableProfiles.Count > 1)
+                MelonLogger.Warning("Doom TV: selector framebuffer is unavailable; loading the first installed WAD.");
+            StartProfile(_availableProfiles[0]);
+        }
 
         MelonLogger.Msg($"Doom TV[{_instanceId}]: DOOM app opened. Melon main-loop frame pump is active.");
-        MelonLogger.Msg($"Doom TV[{_instanceId}]: controls: WASD/arrows move/turn, Ctrl or left mouse fires, E/Space uses, Shift runs, 1-7 switch Doom weapons, Q opens Doom menu, Esc returns to TV menu.");
         MelonLogger.Msg($"Doom TV[{_instanceId}]: Schedule I hotbar input and HUD are disabled until the DOOM app closes.");
     }
 
@@ -137,10 +138,17 @@ public sealed class DoomTvApp : TVApp
 
     private unsafe void PumpFrame()
     {
+        DoomInputOwnershipService.Maintain();
+
+        if (_selectingWad)
+        {
+            HandleSelectorInput();
+            return;
+        }
+
         if (_runtime == null || !_runtime.IsRunning)
             return;
 
-        DoomInputOwnershipService.Maintain();
         DoomInputService.Update(_runtime);
 
         if (!_loggedFirstPump)
@@ -225,7 +233,7 @@ public sealed class DoomTvApp : TVApp
 
         if (_displayRoot == null)
         {
-            _displayRoot = new GameObject($"{DoomEdition.FramebufferName}_{_profile.Flavor}_{_instanceId}");
+            _displayRoot = new GameObject($"{DoomEdition.FramebufferName}_{_instanceId}");
             _displayRoot.AddComponent<RectTransform>();
             _displayRoot.AddComponent<CanvasRenderer>();
             _frameImage = _displayRoot.AddComponent<RawImage>();
@@ -311,6 +319,104 @@ public sealed class DoomTvApp : TVApp
         _frameTexture.Apply(false, false);
     }
 
+    private void PrepareDisplay()
+    {
+        if (_frameImage == null || _frameTexture == null)
+            return;
+
+        _frameImage.color = Color.white;
+        _frameImage.texture = _frameTexture;
+        _frameImage.uvRect = new Rect(0f, 0f, 1f, 1f);
+        StretchDisplayToParent();
+    }
+
+    private void ShowSelector(string? status)
+    {
+        _selectingWad = true;
+        _selectorStatus = status;
+        _selectedProfileIndex = Math.Clamp(_selectedProfileIndex, 0, Math.Max(0, _availableProfiles.Count - 1));
+        DoomInputService.BeginSelection();
+        UploadSelector();
+
+        if (_availableProfiles.Count > 1)
+            MelonLogger.Msg($"Doom TV[{_instanceId}]: showing WAD selector for {_availableProfiles.Count} installed WADs.");
+        else
+            MelonLogger.Warning($"Doom TV[{_instanceId}]: WAD selector message: {status}");
+    }
+
+    private void HandleSelectorInput()
+    {
+        DoomInputService.SelectionAction action = DoomInputService.PollSelection();
+        switch (action)
+        {
+            case DoomInputService.SelectionAction.Previous when _availableProfiles.Count > 0:
+                _selectedProfileIndex = (_selectedProfileIndex - 1 + _availableProfiles.Count) % _availableProfiles.Count;
+                _selectorStatus = null;
+                UploadSelector();
+                break;
+
+            case DoomInputService.SelectionAction.Next when _availableProfiles.Count > 0:
+                _selectedProfileIndex = (_selectedProfileIndex + 1) % _availableProfiles.Count;
+                _selectorStatus = null;
+                UploadSelector();
+                break;
+
+            case DoomInputService.SelectionAction.Confirm when _availableProfiles.Count > 0:
+                StartProfile(_availableProfiles[_selectedProfileIndex]);
+                break;
+        }
+    }
+
+    private bool StartProfile(DoomWadProfile profile)
+    {
+        _selectingWad = false;
+        _selectorStatus = null;
+        _runtime?.Dispose();
+        _runtime = new DoomNativeRuntime(profile);
+        if (!_runtime.Start())
+        {
+            string failure = _runtime.LastError ?? "unknown native runtime error";
+            MelonLogger.Error($"Doom TV[{_instanceId}]: cannot launch {profile.Title}. Expected WAD: {profile.WadPath}");
+            MelonLogger.Error($"Doom TV[{_instanceId}]: expected runtime: {DoomPaths.RuntimePath}");
+            _runtime.Dispose();
+            _runtime = null;
+            ShowSelector($"COULD NOT START {profile.Title} - CHECK LATEST.LOG");
+            MelonLogger.Error($"Doom TV[{_instanceId}]: {failure}");
+            return false;
+        }
+
+        DoomInputService.SynchronizeGameBindings();
+        if (_frameTexture != null)
+        {
+            UploadDiagnosticPattern();
+            _diagnosticFramesRemaining = DiagnosticHoldFrames;
+            MelonLogger.Msg($"Doom TV[{_instanceId}]: holding diagnostic checkerboard for {DiagnosticHoldFrames} Melon frames before showing native DOOM.");
+        }
+
+        MelonLogger.Msg($"Doom TV[{_instanceId}]: selected {profile.Title} from {profile.WadPath}.");
+        MelonLogger.Msg($"Doom TV[{_instanceId}]: controls: WASD/arrows move/turn, Ctrl or left mouse fires, E/Space uses, Shift runs, 1-7 switch Doom weapons, Q opens Doom menu, Esc returns to TV menu.");
+        return true;
+    }
+
+    private unsafe void UploadSelector()
+    {
+        if (_frameTexture == null)
+            return;
+
+        _selectorFrame ??= new byte[DoomNativeRuntime.FrameBytes];
+        DoomWadSelectorRenderer.Render(
+            _selectorFrame,
+            _availableProfiles,
+            _selectedProfileIndex,
+            _selectorStatus);
+
+        fixed (byte* ptr = _selectorFrame)
+        {
+            _frameTexture.LoadRawTextureData((IntPtr)ptr, _selectorFrame.Length);
+        }
+        _frameTexture.Apply(false, false);
+    }
+
     private static FrameStats AnalyzeFrame(byte[] frame)
     {
         int nonBlack = 0;
@@ -345,6 +451,9 @@ public sealed class DoomTvApp : TVApp
         DoomInputOwnershipService.Release();
         _runtime?.Dispose();
         _runtime = null;
+        _selectingWad = false;
+        _selectorStatus = null;
+        _availableProfiles.Clear();
         MelonLogger.Msg($"Doom TV[{_instanceId}]: DOOM stopped; session exited; returning to TV home screen.");
     }
 

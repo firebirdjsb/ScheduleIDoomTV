@@ -4,8 +4,9 @@ Doom3.WAD
 Tnt.wad
 Plutonia.wad
 
-The TV home screen always contains DOOM 3. It also adds separate
-DOOM 3: TNT and DOOM 3: PLUTONIA entries when those named files are present.
+The TV home screen contains one DOOM 3 app. When multiple supported WADs are
+present, the app opens a selection screen. Use W/S or the arrow keys and press
+Enter to load the highlighted WAD. A single installed WAD starts directly.
 
 The IWAD is not included in the redistributable mod package.
 

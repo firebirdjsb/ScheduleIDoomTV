@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using MelonLoader;
@@ -8,6 +7,8 @@ namespace ScheduleIDoom3TV;
 
 internal static class DoomTvRegistrationPatch
 {
+    private static DoomTvApp? _app;
+    private static object? _homeScreen;
     private static MethodInfo? _spawnUi;
     private static MethodInfo? _spawnButton;
     private static MethodInfo? _registryRegister;
@@ -89,39 +90,39 @@ internal static class DoomTvRegistrationPatch
             if (__instance == null)
                 return;
 
+            if (!ReferenceEquals(_homeScreen, __instance))
+            {
+                _homeScreen = __instance;
+                _app = null;
+            }
+
             int attachedApps = DoomTvApp.AttachAllToGameCanvas(__instance);
             if (attachedApps > 0)
                 MelonLogger.Msg($"Doom TV: bound {attachedApps} discovered app instance(s) to the current game TV canvas.");
 
-            CacheS1ApiMethods();
-            if (_spawnUi == null || _spawnButton == null)
+            if (RegistryAlreadyContainsDoomApp())
             {
-                MelonLogger.Error("Doom TV: current S1API TVApp no longer exposes SpawnUI/SpawnButton; cannot inject tiles.");
+                MelonLogger.Msg("Doom TV: S1API registry already contains the DOOM app.");
                 return;
             }
 
-            Dictionary<string, DoomTvApp> registered = FindRegisteredDoomApps();
-            int created = 0;
-            foreach (DoomWadProfile profile in DoomWadProfile.All)
+            if (_app != null)
+                return;
+
+            CacheS1ApiMethods();
+            if (_spawnUi == null || _spawnButton == null)
             {
-                if (!profile.ShouldRegister || registered.ContainsKey(profile.AppId))
-                    continue;
-
-                DoomTvApp app = new(profile);
-                _registryRegister?.Invoke(null, new object?[] { app });
-                _spawnUi.Invoke(app, new[] { __instance });
-                _spawnButton.Invoke(app, new[] { __instance });
-                app.AttachToGameCanvas(__instance);
-                registered[profile.AppId] = app;
-                created++;
-
-                MelonLogger.Msg($"Doom TV: registered {profile.Title} from {profile.WadPath}.");
+                MelonLogger.Error("Doom TV: current S1API TVApp no longer exposes SpawnUI/SpawnButton; cannot inject tile.");
+                return;
             }
 
-            if (created == 0)
-                MelonLogger.Msg("Doom TV: S1API registry already contains every available DOOM 3 WAD app.");
-            else
-                MelonLogger.Msg($"Doom TV: forced registration completed for {created} WAD app(s).");
+            _app = new DoomTvApp();
+            _registryRegister?.Invoke(null, new object?[] { _app });
+            _spawnUi.Invoke(_app, new[] { __instance });
+            _spawnButton.Invoke(_app, new[] { __instance });
+            _app.AttachToGameCanvas(__instance);
+
+            MelonLogger.Msg("Doom TV: forced DOOM tile registration completed.");
         }
         catch (TargetInvocationException ex)
         {
@@ -133,18 +134,20 @@ internal static class DoomTvRegistrationPatch
         }
     }
 
-    private static Dictionary<string, DoomTvApp> FindRegisteredDoomApps()
+    private static bool RegistryAlreadyContainsDoomApp()
     {
-        Dictionary<string, DoomTvApp> result = new(StringComparer.Ordinal);
         if (_registeredApps?.GetValue(null) is not IEnumerable apps)
-            return result;
+            return false;
 
         foreach (object? app in apps)
         {
             if (app is DoomTvApp doom)
-                result[doom.ProfileAppId] = doom;
+            {
+                _app = doom;
+                return true;
+            }
         }
 
-        return result;
+        return false;
     }
 }

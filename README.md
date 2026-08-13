@@ -23,10 +23,12 @@ writes `Runtime\Doom3.compat.WAD`. The original file is never changed. Later
 launches reuse the verified compatibility copy.
 
 `Tnt.wad` and `Plutonia.wad` are validated as complete standalone 32-map
-IWADs. When present, the TV home screen adds separate `DOOM 3: TNT` and
-`DOOM 3: PLUTONIA` entries, so all three WADs can remain installed together.
-The supplied TNT and Plutonia files are identified by SHA-256 before launch;
-the mod does not modify or redistribute them.
+IWADs. The TV home screen contains one `DOOM 3` app. When more than one
+supported WAD is installed, opening that app shows an in-TV selector; use W/S
+or the arrow keys and press Enter to load the highlighted WAD. If only one WAD
+is installed, it starts directly. The supplied TNT and Plutonia files are
+identified by SHA-256 before launch; the mod does not modify or redistribute
+them.
 
 The branch builds one standalone TV application and one install package.
 The native runtime includes a Windows `waveOut` mixer for Doom sound effects
