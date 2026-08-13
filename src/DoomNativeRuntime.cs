@@ -27,6 +27,10 @@ internal sealed class DoomNativeRuntime : IDisposable
     private delegate int IsInitializedDelegate();
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate uint LastExceptionDelegate();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int AudioStatusDelegate();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void ShutdownDelegate();
 
     private IntPtr _library;
     private CreateDelegate? _create;
@@ -37,6 +41,8 @@ internal sealed class DoomNativeRuntime : IDisposable
     private ResumeDelegate? _resume;
     private IsInitializedDelegate? _isInitialized;
     private LastExceptionDelegate? _lastException;
+    private AudioStatusDelegate? _audioStatus;
+    private ShutdownDelegate? _shutdown;
     private readonly byte[] _frame = new byte[FrameBytes];
     private GCHandle _frameHandle;
     private int _lastFrameNumber = -1;
@@ -77,6 +83,7 @@ internal sealed class DoomNativeRuntime : IDisposable
                 _resume!();
                 IsRunning = true;
                 MelonLogger.Msg("Doom TV: resumed existing DOOM session.");
+                LogAudioStatus();
                 return true;
             }
 
@@ -86,6 +93,7 @@ internal sealed class DoomNativeRuntime : IDisposable
 
             IsRunning = true;
             MelonLogger.Msg($"Doom TV: DOOM started from {runtimeWadPath}");
+            LogAudioStatus();
             return true;
         }
         catch (Exception ex)
@@ -179,6 +187,8 @@ internal sealed class DoomNativeRuntime : IDisposable
         _resume = Load<ResumeDelegate>("s1doom_resume");
         _isInitialized = Load<IsInitializedDelegate>("s1doom_is_initialized");
         _lastException = Load<LastExceptionDelegate>("s1doom_last_exception");
+        _audioStatus = TryLoad<AudioStatusDelegate>("s1doom_audio_status");
+        _shutdown = Load<ShutdownDelegate>("s1doom_shutdown");
         _frameHandle = GCHandle.Alloc(_frame, GCHandleType.Pinned);
     }
 
@@ -186,6 +196,23 @@ internal sealed class DoomNativeRuntime : IDisposable
     {
         IntPtr address = System.Runtime.InteropServices.NativeLibrary.GetExport(_library, export);
         return Marshal.GetDelegateForFunctionPointer<T>(address);
+    }
+
+    private T? TryLoad<T>(string export) where T : Delegate
+    {
+        return System.Runtime.InteropServices.NativeLibrary.TryGetExport(_library, export, out IntPtr address)
+            ? Marshal.GetDelegateForFunctionPointer<T>(address)
+            : null;
+    }
+
+    private void LogAudioStatus()
+    {
+        int status = _audioStatus?.Invoke() ?? 0;
+        MelonLogger.Msg(
+            $"Doom TV: native audio status: " +
+            $"sound effects={((status & 1) != 0 ? "ready" : "unavailable")}, " +
+            $"music backend={((status & 2) != 0 ? "ready" : "unavailable")}, " +
+            $"music playback={((status & 4) != 0 ? "active" : "inactive")}.");
     }
 
     private string DescribeNativeFailure(string operation, int result)
@@ -207,13 +234,29 @@ internal sealed class DoomNativeRuntime : IDisposable
 
     public void Dispose()
     {
-        Pause();
+        if (_library == IntPtr.Zero)
+            return;
+
+        DoomInputService.ReleaseAll(this);
+        try
+        {
+            _shutdown?.Invoke();
+            int remainingAudio = _audioStatus?.Invoke() ?? 0;
+            if (remainingAudio == 0)
+                MelonLogger.Msg("Doom TV: native audio shutdown confirmed; no sound or music device remains active.");
+            else
+                MelonLogger.Warning($"Doom TV: native audio still reports active state after shutdown (status={remainingAudio}).");
+        }
+        catch (Exception ex)
+        {
+            MelonLogger.Warning($"Doom TV: native shutdown reported an error: {ex.Message}");
+        }
+
+        IsRunning = false;
         if (_frameHandle.IsAllocated)
             _frameHandle.Free();
-        if (_library != IntPtr.Zero)
-        {
-            System.Runtime.InteropServices.NativeLibrary.Free(_library);
-            _library = IntPtr.Zero;
-        }
+        System.Runtime.InteropServices.NativeLibrary.Free(_library);
+        _library = IntPtr.Zero;
+        _lastFrameNumber = -1;
     }
 }

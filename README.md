@@ -9,7 +9,7 @@ This branch contains only the DOOM 3 edition:
 - TV title: `DOOM 3`
 - mod data folder: `Schedule I\Mods\SchedualDoom3Tv`
 - required IWAD: `Schedule I\Mods\SchedualDoom3Tv\WAD\Doom3.WAD`
-- version: `1.0.1`
+- version: `1.0.2`
 
 The supplied `Doom3.WAD` is a standalone IWAD with the Ultimate Doom map
 layout (`E1M1` through `E4M9`). The native runtime detects that layout
@@ -23,6 +23,9 @@ writes `Runtime\Doom3.compat.WAD`. The original file is never changed. Later
 launches reuse the verified compatibility copy.
 
 The branch builds one standalone TV application and one install package.
+The native runtime includes a Windows `waveOut` mixer for Doom sound effects
+and a MUS-to-MIDI/MCI music backend. Audio pauses with the TV app and both
+devices are shut down when the app closes.
 
 ## Build
 

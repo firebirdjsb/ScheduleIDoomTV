@@ -30,6 +30,11 @@ static volatile LONG s_last_exception = 0;
 static char* s_wad_path_owned = NULL;
 static char* s_argv[7] = { 0 };
 
+void S1DoomAudioPause(void);
+void S1DoomAudioResume(void);
+int S1DoomAudioStatus(void);
+void S1DoomAudioShutdown(void);
+
 static void queue_key(int pressed, unsigned char key)
 {
     LONG write = s_key_write;
@@ -54,10 +59,8 @@ static int prepare_arguments(const char* wad_path)
     s_argv[0] = "ScheduleIDoom3TV";
     s_argv[1] = "-iwad";
     s_argv[2] = s_wad_path_owned;
-    s_argv[3] = "-nosound";
-    s_argv[4] = "-nomusic";
-    s_argv[5] = "-nogui";
-    s_argv[6] = NULL;
+    s_argv[3] = "-nogui";
+    s_argv[4] = NULL;
     return 1;
 }
 
@@ -67,7 +70,6 @@ void DG_Init(void)
     s_key_write = 0;
     s_key_read = 0;
 }
-
 void DG_DrawFrame(void) { InterlockedIncrement(&s_frame_counter); }
 void DG_SleepMs(uint32_t ms) { Sleep(ms); }
 uint32_t DG_GetTicksMs(void) { return (uint32_t)GetTickCount64(); }
@@ -96,7 +98,7 @@ S1DOOM_EXPORT int __cdecl s1doom_create(const char* wad_path)
     s_active = 1;
     s_last_exception = 0;
 #if defined(_MSC_VER)
-    __try { doomgeneric_Create(6, s_argv); }
+    __try { doomgeneric_Create(4, s_argv); }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
         s_last_exception = (LONG)GetExceptionCode();
@@ -104,7 +106,7 @@ S1DOOM_EXPORT int __cdecl s1doom_create(const char* wad_path)
         return -100;
     }
 #else
-    doomgeneric_Create(6, s_argv);
+    doomgeneric_Create(4, s_argv);
 #endif
     s_initialized = 1;
     return 1;
@@ -169,7 +171,27 @@ S1DOOM_EXPORT int __cdecl s1doom_copy_frame(unsigned char* rgba, int capacity, i
     return FRAME_BYTES;
 }
 
-S1DOOM_EXPORT void __cdecl s1doom_pause(void) { s_active = 0; }
-S1DOOM_EXPORT void __cdecl s1doom_resume(void) { if (s_initialized) s_active = 1; }
+S1DOOM_EXPORT void __cdecl s1doom_pause(void) { s_active = 0; S1DoomAudioPause(); }
+S1DOOM_EXPORT void __cdecl s1doom_resume(void) { if (s_initialized) { s_active = 1; S1DoomAudioResume(); } }
 S1DOOM_EXPORT int __cdecl s1doom_is_initialized(void) { return s_initialized; }
 S1DOOM_EXPORT unsigned long __cdecl s1doom_last_exception(void) { return (unsigned long)s_last_exception; }
+S1DOOM_EXPORT int __cdecl s1doom_audio_status(void) { return S1DoomAudioStatus(); }
+S1DOOM_EXPORT void __cdecl s1doom_shutdown(void)
+{
+    s_active = 0;
+    S1DoomAudioShutdown();
+    if (DG_ScreenBuffer != NULL)
+    {
+        free(DG_ScreenBuffer);
+        DG_ScreenBuffer = NULL;
+    }
+    if (s_wad_path_owned != NULL)
+    {
+        free(s_wad_path_owned);
+        s_wad_path_owned = NULL;
+    }
+    s_initialized = 0;
+    s_frame_counter = 0;
+    s_key_write = 0;
+    s_key_read = 0;
+}

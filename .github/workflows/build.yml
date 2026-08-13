@@ -31,12 +31,21 @@ jobs:
 
           $doomDir = Join-Path $upstream 'doomgeneric'
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'native\s1doom_bridge.c') (Join-Path $doomDir 'doomgeneric_win.c') -Force
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'native\s1doom_sound.c') (Join-Path $doomDir 's1doom_sound.c') -Force
+
+          $iSound = Join-Path $doomDir 'i_sound.c'
+          $iSoundText = Get-Content $iSound -Raw
+          $iSoundText = $iSoundText.Replace('#if defined(FEATURE_SOUND) && !defined(__DJGPP__)', '#if defined(FEATURE_SOUND) && !defined(__DJGPP__) && !defined(S1DOOM_WIN_AUDIO)')
+          Set-Content -Path $iSound -Value $iSoundText -Encoding UTF8
 
           $project = Join-Path $doomDir 'doomgeneric.vcxproj'
           $xml = Get-Content $project -Raw
           $xml = $xml -replace '<ConfigurationType>Application</ConfigurationType>', '<ConfigurationType>DynamicLibrary</ConfigurationType>'
           $xml = $xml -replace '<PlatformToolset>[^<]+</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>'
           $xml = $xml -replace '<CharacterSet>Unicode</CharacterSet>', '<CharacterSet>MultiByte</CharacterSet>'
+          $xml = $xml -replace '<PreprocessorDefinitions>NDEBUG;_CONSOLE;', '<PreprocessorDefinitions>NDEBUG;_CONSOLE;FEATURE_SOUND;S1DOOM_WIN_AUDIO;'
+          $xml = $xml -replace '<ClCompile Include="doomgeneric_win.c" />', "<ClCompile Include=`"doomgeneric_win.c`" />`r`n    <ClCompile Include=`"s1doom_sound.c`" />"
+          $xml = $xml -replace '<ClCompile Include="memio.c" />', "<ClCompile Include=`"memio.c`" />`r`n    <ClCompile Include=`"mus2mid.c`" />"
           Set-Content -Path $project -Value $xml -Encoding UTF8
 
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -82,11 +91,11 @@ jobs:
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') (Join-Path $runtime 'doomgeneric_s1.dll')
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'assets\Doom3\PUT_DOOM3_WAD_HERE.txt') (Join-Path $wad 'PUT_DOOM3_WAD_HERE.txt')
 
-          Compress-Archive -Path $mods -DestinationPath (Join-Path $env:GITHUB_WORKSPACE 'SchedualDoom3Tv-1.0.1.zip') -CompressionLevel Optimal
+          Compress-Archive -Path $mods -DestinationPath (Join-Path $env:GITHUB_WORKSPACE 'SchedualDoom3Tv-1.0.2.zip') -CompressionLevel Optimal
 
       - name: Upload DOOM 3 package
         uses: actions/upload-artifact@v4
         with:
-          name: SchedualDoom3Tv-1.0.1
-          path: SchedualDoom3Tv-1.0.1.zip
+          name: SchedualDoom3Tv-1.0.2
+          path: SchedualDoom3Tv-1.0.2.zip
           if-no-files-found: error

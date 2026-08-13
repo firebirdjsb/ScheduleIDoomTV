@@ -7,7 +7,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>ScheduleIDoom3TV</AssemblyName>
     <RootNamespace>ScheduleIDoom3TV</RootNamespace>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <OutputPath>bin\Doom3\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
