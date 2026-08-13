@@ -4,12 +4,25 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>ScheduleIDoomTV</AssemblyName>
     <RootNamespace>ScheduleIDoomTV</RootNamespace>
-    <Version>0.2.1-alpha</Version>
+    <Version>0.3.16-alpha</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="LavaGang.MelonLoader" Version="0.7.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="stubs\**\*.cs" />
+    <Compile Remove="work\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="stubs\UnityEngine.CoreModule\UnityEngine.CoreModule.csproj" Private="false" />
+    <ProjectReference Include="stubs\UnityEngine.UIModule\UnityEngine.UIModule.csproj" Private="false" />
+    <ProjectReference Include="stubs\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
+    <ProjectReference Include="stubs\S1API\S1API.csproj" Private="false" />
   </ItemGroup>
 </Project>
