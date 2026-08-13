@@ -21,8 +21,8 @@ public sealed class DoomTvApp : TVApp
     private bool _loggedFirstFrame;
     private bool _loggedFrameStats;
 
-    protected override string AppName => "ScheduleIDoomTV.Doom";
-    protected override string AppTitle => "DOOM";
+    protected override string AppName => DoomEdition.AppId;
+    protected override string AppTitle => DoomEdition.GameTitle;
     protected override Sprite Icon => DoomIconFactory.GetOrCreate()!;
 
     internal static void PumpActiveFromMelon()
@@ -34,7 +34,7 @@ public sealed class DoomTvApp : TVApp
     {
         try
         {
-            GameObject framebuffer = new("DoomFramebuffer");
+            GameObject framebuffer = new(DoomEdition.FramebufferName);
             framebuffer.layer = container.layer;
             framebuffer.transform.SetParent(container.transform, false);
 

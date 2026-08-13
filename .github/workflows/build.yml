@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, ci-load-test ]
   workflow_dispatch:
 
 jobs:
@@ -70,6 +70,21 @@ jobs:
           if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Managed output is not a valid PE file.' }
           Copy-Item $dll.FullName (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoomTV.dll') -Force
 
+      - name: Restore DOOM II managed mod
+        run: dotnet restore ScheduleIDoom2TV.csproj
+
+      - name: Build DOOM II managed mod
+        run: dotnet build ScheduleIDoom2TV.csproj -c Release --no-restore
+
+      - name: Verify DOOM II managed DLL
+        shell: pwsh
+        run: |
+          $dll = Get-ChildItem -Recurse -Filter ScheduleIDoom2TV.dll | Where-Object { $_.FullName -match 'bin\\Doom2\\Release' } | Select-Object -First 1
+          if (-not $dll) { throw 'ScheduleIDoom2TV.dll was not produced.' }
+          $bytes = [System.IO.File]::ReadAllBytes($dll.FullName)
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'DOOM II managed output is not a valid PE file.' }
+          Copy-Item $dll.FullName (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoom2TV.dll') -Force
+
       - name: Create corrected Mods install package
         shell: pwsh
         run: |
@@ -101,4 +116,29 @@ jobs:
         with:
           name: SchedualDoomTv-0.3.6-alpha
           path: SchedualDoomTv-0.3.6-alpha.zip
+          if-no-files-found: error
+
+      - name: Create DOOM II Mods install package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $mods = Join-Path $env:GITHUB_WORKSPACE 'package-doom2\Mods'
+          $dataRoot = Join-Path $mods 'SchedualDoom2Tv'
+          $wad = Join-Path $dataRoot 'WAD'
+          $runtime = Join-Path $dataRoot 'Runtime'
+          New-Item -ItemType Directory -Force -Path $mods, $wad, $runtime | Out-Null
+
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoom2TV.dll') (Join-Path $mods 'ScheduleIDoom2TV.dll')
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') (Join-Path $runtime 'doomgeneric_s1.dll')
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'assets\Doom2\PUT_DOOM2_WAD_HERE.txt') (Join-Path $wad 'PUT_DOOM2_WAD_HERE.txt')
+
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoom2Tv-1.0.0.zip'
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path $mods -DestinationPath $zip -CompressionLevel Optimal
+
+      - name: Upload DOOM II playable test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchedualDoom2Tv-1.0.0
+          path: SchedualDoom2Tv-1.0.0.zip
           if-no-files-found: error

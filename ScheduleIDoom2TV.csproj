@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>ScheduleIDoom2TV</AssemblyName>
+    <RootNamespace>ScheduleIDoomTV</RootNamespace>
+    <Version>1.0.0</Version>
+    <DefineConstants>$(DefineConstants);DOOM2_BUILD</DefineConstants>
+    <OutputPath>bin\Doom2\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LavaGang.MelonLoader" Version="0.7.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="obj\**\*.cs" />
+    <Compile Remove="stubs\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="stubs\UnityEngine.CoreModule\UnityEngine.CoreModule.csproj" Private="false" />
+    <ProjectReference Include="stubs\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
+    <ProjectReference Include="stubs\S1API\S1API.csproj" Private="false" />
+  </ItemGroup>
+</Project>

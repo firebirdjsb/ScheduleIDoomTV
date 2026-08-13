@@ -9,11 +9,11 @@ public sealed class DoomTvMod : MelonMod
     public override void OnInitializeMelon()
     {
         DoomPaths.EnsureDirectories();
-        MelonLogger.Msg("Schedule I - Doom TV 0.3.6-alpha loaded successfully.");
-        MelonLogger.Msg($"Doom TV: looking for Doom1.WAD at {DoomPaths.WadPath}");
+        MelonLogger.Msg($"{DoomEdition.MelonName} {DoomEdition.ModVersion} loaded successfully.");
+        MelonLogger.Msg($"{DoomEdition.GameLogName} TV: looking for {DoomEdition.WadFileName} at {DoomPaths.WadPath}");
         MelonLogger.Msg($"Doom TV: looking for native runtime at {DoomPaths.RuntimePath}");
 
-        _harmony = new global::HarmonyLib.Harmony("com.firebirdjsb.scheduleidoomtv");
+        _harmony = new global::HarmonyLib.Harmony(DoomEdition.HarmonyId);
         if (DoomTvRegistrationPatch.Install(_harmony))
             MelonLogger.Msg("Doom TV: forced TV-home registration patch installed.");
         else
