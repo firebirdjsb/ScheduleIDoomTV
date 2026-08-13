@@ -1,11 +1,14 @@
-Place the DOOM 3 IWAD in this folder and name it exactly:
+Place any supported standalone IWADs in this folder using these exact names:
 
 Doom3.WAD
+Tnt.wad
+Plutonia.wad
 
-Final path:
-Schedule I\Mods\SchedualDoom3Tv\WAD\Doom3.WAD
+The TV home screen always contains DOOM 3. It also adds separate
+DOOM 3: TNT and DOOM 3: PLUTONIA entries when those named files are present.
 
 The IWAD is not included in the redistributable mod package.
 
 The known PrBoom-targeted download is repaired automatically into a separate
 Runtime\Doom3.compat.WAD file. Your original Doom3.WAD remains unchanged.
+Tnt.wad and Plutonia.wad are validated and launched without modification.

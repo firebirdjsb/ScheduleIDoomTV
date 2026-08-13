@@ -46,6 +46,12 @@ internal sealed class DoomNativeRuntime : IDisposable
     private readonly byte[] _frame = new byte[FrameBytes];
     private GCHandle _frameHandle;
     private int _lastFrameNumber = -1;
+    private readonly DoomWadProfile _profile;
+
+    internal DoomNativeRuntime(DoomWadProfile profile)
+    {
+        _profile = profile;
+    }
 
     internal bool IsLoaded => _library != IntPtr.Zero;
     internal bool IsRunning { get; private set; }
@@ -58,18 +64,17 @@ internal sealed class DoomNativeRuntime : IDisposable
         LastError = null;
         DoomPaths.EnsureDirectories();
 
-        if (!File.Exists(DoomPaths.WadPath))
-            return Fail($"Doom WAD not found: {DoomPaths.WadPath}");
+        if (!File.Exists(_profile.WadPath))
+            return Fail($"Doom WAD not found: {_profile.WadPath}");
 
         if (!DoomWadCompatibility.TryPrepare(
-                DoomPaths.WadPath,
-                DoomPaths.CompatibleWadPath,
+                _profile,
                 out string runtimeWadPath,
                 out string wadDescription,
                 out string wadError))
             return Fail($"Doom 3 IWAD preparation failed: {wadError}");
 
-        MelonLogger.Msg($"Doom TV: validated {DoomEdition.WadFileName} ({wadDescription}).");
+        MelonLogger.Msg($"Doom TV: validated {_profile.FileName} for {_profile.Title} ({wadDescription}).");
 
         if (!File.Exists(DoomPaths.RuntimePath))
             return Fail($"Doom runtime not found: {DoomPaths.RuntimePath}");

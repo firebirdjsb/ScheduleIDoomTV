@@ -18,6 +18,7 @@ public sealed class DoomTvApp : TVApp
     private static readonly List<DoomTvApp> Instances = new();
 
     private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
+    private readonly DoomWadProfile _profile;
     private GameObject? _uiContainer;
     private GameObject? _displayRoot;
     private DoomNativeRuntime? _runtime;
@@ -29,15 +30,22 @@ public sealed class DoomTvApp : TVApp
     private bool _loggedFirstFrame;
     private bool _loggedFrameStats;
 
-    protected override string AppName => DoomEdition.AppId;
-    protected override string AppTitle => DoomEdition.GameTitle;
+    protected override string AppName => _profile.AppId;
+    protected override string AppTitle => _profile.Title;
     protected override Sprite Icon => DoomIconFactory.GetOrCreate()!;
 
-    public DoomTvApp()
+    public DoomTvApp() : this(DoomWadProfile.Doom3)
     {
+    }
+
+    internal DoomTvApp(DoomWadProfile profile)
+    {
+        _profile = profile;
         lock (InstancesLock)
             Instances.Add(this);
     }
+
+    internal string ProfileAppId => _profile.AppId;
 
     internal static int AttachAllToGameCanvas(object homeScreen)
     {
@@ -90,10 +98,10 @@ public sealed class DoomTvApp : TVApp
 
     protected override void OnOpened()
     {
-        _runtime ??= new DoomNativeRuntime();
+        _runtime ??= new DoomNativeRuntime(_profile);
         if (!_runtime.Start())
         {
-            MelonLogger.Error($"Doom TV[{_instanceId}]: cannot launch DOOM. Expected WAD: {DoomPaths.WadPath}");
+            MelonLogger.Error($"Doom TV[{_instanceId}]: cannot launch {_profile.Title}. Expected WAD: {_profile.WadPath}");
             MelonLogger.Error($"Doom TV[{_instanceId}]: expected runtime: {DoomPaths.RuntimePath}");
             return;
         }
@@ -217,7 +225,7 @@ public sealed class DoomTvApp : TVApp
 
         if (_displayRoot == null)
         {
-            _displayRoot = new GameObject($"{DoomEdition.FramebufferName}_{_instanceId}");
+            _displayRoot = new GameObject($"{DoomEdition.FramebufferName}_{_profile.Flavor}_{_instanceId}");
             _displayRoot.AddComponent<RectTransform>();
             _displayRoot.AddComponent<CanvasRenderer>();
             _frameImage = _displayRoot.AddComponent<RawImage>();

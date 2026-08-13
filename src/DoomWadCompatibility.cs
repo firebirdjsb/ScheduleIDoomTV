@@ -9,6 +9,8 @@ internal static class DoomWadCompatibility
 {
     private const string SuppliedDamagedSha256 = "0C91D97E5D7ABAE57A23628DA38C11E69B4ED1046400E814CD66A8B02B183807";
     private const string RepairedSha256 = "6FDF361847B46228CFEBD9F3AF09CD844282AC75F3EDBB61CA4CB27103CE2E7F";
+    private const string SuppliedTntSha256 = "C0A9C29D023AF2737953663D0E03177D9B7B7B64146C158DCC2A07F9EC18F353";
+    private const string SuppliedPlutoniaSha256 = "A83B00C636FA3308286E76B1B3153FC14507CAF994B0450770421260B08EFED8";
     private const int ExpectedLumpCount = 2306;
     private const int DirectoryOffset = 12371396;
     private const int FirstFlatDataOffset = 11933124;
@@ -34,8 +36,7 @@ internal static class DoomWadCompatibility
         .Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
     internal static bool TryPrepare(
-        string sourcePath,
-        string compatiblePath,
+        DoomWadProfile profile,
         out string runtimePath,
         out string description,
         out string error)
@@ -43,11 +44,28 @@ internal static class DoomWadCompatibility
         runtimePath = string.Empty;
         description = string.Empty;
         error = string.Empty;
+        string sourcePath = profile.WadPath;
+        string compatiblePath = profile.RuntimeWadPath;
 
-        if (DoomWadValidator.TryValidate(sourcePath, out description, out string sourceValidationError))
+        if (DoomWadValidator.TryValidate(
+                sourcePath,
+                out DoomWadLayout sourceLayout,
+                out description,
+                out string sourceValidationError))
         {
-            runtimePath = sourcePath;
-            return true;
+            return TryResolveValidatedWad(
+                profile,
+                sourcePath,
+                sourceLayout,
+                ref description,
+                out runtimePath,
+                out error);
+        }
+
+        if (profile.Flavor != DoomWadFlavor.Doom3)
+        {
+            error = sourceValidationError;
+            return false;
         }
 
         try
@@ -61,7 +79,12 @@ internal static class DoomWadCompatibility
 
             if (File.Exists(compatiblePath)
                 && ComputeSha256(compatiblePath).Equals(RepairedSha256, StringComparison.OrdinalIgnoreCase)
-                && DoomWadValidator.TryValidate(compatiblePath, out description, out _))
+                && DoomWadValidator.TryValidate(
+                    compatiblePath,
+                    out DoomWadLayout cachedLayout,
+                    out description,
+                    out _)
+                && cachedLayout == DoomWadLayout.Episode36)
             {
                 runtimePath = compatiblePath;
                 description += ", cached directory repair";
@@ -82,8 +105,18 @@ internal static class DoomWadCompatibility
                 if (!repairedHash.Equals(RepairedSha256, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException($"directory repair produced unexpected SHA-256 {repairedHash}");
 
-                if (!DoomWadValidator.TryValidate(temporaryPath, out description, out string validationError))
-                    throw new InvalidDataException(validationError);
+                if (!DoomWadValidator.TryValidate(
+                        temporaryPath,
+                        out DoomWadLayout repairedLayout,
+                        out description,
+                        out string validationError)
+                    || repairedLayout != DoomWadLayout.Episode36)
+                {
+                    string reason = string.IsNullOrWhiteSpace(validationError)
+                        ? $"directory repair produced unexpected map layout {repairedLayout}"
+                        : validationError;
+                    throw new InvalidDataException(reason);
+                }
 
                 File.Move(temporaryPath, compatiblePath, overwrite: true);
             }
@@ -101,6 +134,107 @@ internal static class DoomWadCompatibility
         {
             error = ex.Message;
             return false;
+        }
+    }
+
+    private static bool TryResolveValidatedWad(
+        DoomWadProfile profile,
+        string sourcePath,
+        DoomWadLayout layout,
+        ref string description,
+        out string runtimePath,
+        out string error)
+    {
+        runtimePath = string.Empty;
+        error = string.Empty;
+
+        if (profile.Flavor == DoomWadFlavor.Doom3 && layout == DoomWadLayout.Episode36)
+        {
+            runtimePath = sourcePath;
+            return true;
+        }
+
+        if (layout != DoomWadLayout.Commercial32)
+        {
+            error = $"{profile.FileName} has the wrong map layout for {profile.Title}";
+            return false;
+        }
+
+        string sourceHash = ComputeSha256(sourcePath);
+        string expectedHash;
+        DoomWadProfile canonicalProfile;
+        switch (profile.Flavor)
+        {
+            case DoomWadFlavor.Tnt:
+                expectedHash = SuppliedTntSha256;
+                canonicalProfile = DoomWadProfile.Tnt;
+                break;
+            case DoomWadFlavor.Plutonia:
+                expectedHash = SuppliedPlutoniaSha256;
+                canonicalProfile = DoomWadProfile.Plutonia;
+                break;
+            default:
+                if (sourceHash.Equals(SuppliedTntSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    expectedHash = SuppliedTntSha256;
+                    canonicalProfile = DoomWadProfile.Tnt;
+                }
+                else if (sourceHash.Equals(SuppliedPlutoniaSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    expectedHash = SuppliedPlutoniaSha256;
+                    canonicalProfile = DoomWadProfile.Plutonia;
+                }
+                else
+                {
+                    error = "a MAP01-through-MAP32 WAD named Doom3.WAD must match the supplied " +
+                            "Tnt.wad or Plutonia.wad; otherwise keep its canonical filename";
+                    return false;
+                }
+                break;
+        }
+
+        if (!sourceHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+        {
+            error = $"{profile.FileName} has unsupported SHA-256 {sourceHash}";
+            return false;
+        }
+
+        if (profile.Flavor == canonicalProfile.Flavor)
+        {
+            runtimePath = sourcePath;
+        }
+        else
+        {
+            runtimePath = canonicalProfile.RuntimeWadPath;
+            CopyCanonicalWad(sourcePath, runtimePath, sourceHash);
+        }
+
+        description += canonicalProfile.Flavor == DoomWadFlavor.Tnt
+            ? ", TNT identity verified"
+            : ", Plutonia identity verified";
+        return true;
+    }
+
+    private static void CopyCanonicalWad(string sourcePath, string destinationPath, string sourceHash)
+    {
+        if (File.Exists(destinationPath)
+            && ComputeSha256(destinationPath).Equals(sourceHash, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        string? directory = Path.GetDirectoryName(destinationPath);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+
+        string temporaryPath = destinationPath + ".tmp";
+        try
+        {
+            File.Copy(sourcePath, temporaryPath, overwrite: true);
+            File.Move(temporaryPath, destinationPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
         }
     }
 

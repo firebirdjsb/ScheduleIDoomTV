@@ -10,7 +10,8 @@ public sealed class DoomTvMod : MelonMod
     {
         DoomPaths.EnsureDirectories();
         MelonLogger.Msg($"{DoomEdition.MelonName} {DoomEdition.ModVersion} loaded successfully.");
-        MelonLogger.Msg($"{DoomEdition.GameLogName} TV: looking for {DoomEdition.WadFileName} at {DoomPaths.WadPath}");
+        foreach (DoomWadProfile profile in DoomWadProfile.All)
+            MelonLogger.Msg($"{DoomEdition.GameLogName} TV: {profile.Title} WAD path: {profile.WadPath}");
         MelonLogger.Msg($"Doom TV: looking for native runtime at {DoomPaths.RuntimePath}");
 
         _harmony = new global::HarmonyLib.Harmony(DoomEdition.HarmonyId);

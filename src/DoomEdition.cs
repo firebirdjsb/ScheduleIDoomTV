@@ -5,7 +5,7 @@ internal static class DoomEdition
     internal const string GameTitle = "DOOM 3";
     internal const string GameLogName = "Doom 3";
     internal const string MelonName = "Schedule I - Doom 3 TV";
-    internal const string ModVersion = "1.0.2";
+    internal const string ModVersion = "1.1.0";
     internal const string AppId = "ScheduleIDoom3TV.Doom3";
     internal const string ModDirectoryName = "SchedualDoom3Tv";
     internal const string WadFileName = "Doom3.WAD";

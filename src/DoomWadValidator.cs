@@ -4,12 +4,24 @@ using System.Text;
 
 namespace ScheduleIDoom3TV;
 
+internal enum DoomWadLayout
+{
+    Unknown,
+    Episode36,
+    Commercial32
+}
+
 internal static class DoomWadValidator
 {
     private const int DirectoryEntrySize = 16;
 
-    internal static bool TryValidate(string path, out string description, out string error)
+    internal static bool TryValidate(
+        string path,
+        out DoomWadLayout layout,
+        out string description,
+        out string error)
     {
+        layout = DoomWadLayout.Unknown;
         description = string.Empty;
         error = string.Empty;
 
@@ -44,11 +56,14 @@ internal static class DoomWadValidator
             bool hasColorMap = false;
             bool hasFirstMap = false;
             bool hasLastMap = false;
+            bool hasCommercialFirstMap = false;
+            bool hasCommercialLastMap = false;
             bool hasFlatStart = false;
             bool hasFlatEnd = false;
             bool hasSpriteStart = false;
             bool hasSpriteEnd = false;
             int episodeMapCount = 0;
+            int commercialMapCount = 0;
 
             stream.Position = directoryOffset;
             for (int i = 0; i < lumpCount; i++)
@@ -67,12 +82,16 @@ internal static class DoomWadValidator
                 hasColorMap |= NameEquals(name, "COLORMAP");
                 hasFirstMap |= NameEquals(name, "E1M1");
                 hasLastMap |= NameEquals(name, "E4M9");
+                hasCommercialFirstMap |= NameEquals(name, "MAP01");
+                hasCommercialLastMap |= NameEquals(name, "MAP32");
                 hasFlatStart |= NameEquals(name, "F_START");
                 hasFlatEnd |= NameEquals(name, "F_END");
                 hasSpriteStart |= NameEquals(name, "S_START");
                 hasSpriteEnd |= NameEquals(name, "S_END");
                 if (IsEpisodeMap(name))
                     episodeMapCount++;
+                if (IsCommercialMap(name))
+                    commercialMapCount++;
             }
 
             if (!hasPalette || !hasColorMap)
@@ -81,9 +100,15 @@ internal static class DoomWadValidator
                 return false;
             }
 
-            if (!hasFirstMap || !hasLastMap || episodeMapCount != 36)
+            bool hasEpisodeLayout = hasFirstMap && hasLastMap && episodeMapCount == 36;
+            bool hasCommercialLayout = hasCommercialFirstMap
+                                       && hasCommercialLastMap
+                                       && commercialMapCount == 32;
+            if (!hasEpisodeLayout && !hasCommercialLayout)
             {
-                error = $"expected the 36-map E1M1-through-E4M9 layout, found {episodeMapCount} episode maps";
+                error = "expected either the 36-map E1M1-through-E4M9 layout " +
+                        $"or the 32-map MAP01-through-MAP32 layout; found {episodeMapCount} episode maps " +
+                        $"and {commercialMapCount} commercial maps";
                 return false;
             }
 
@@ -93,7 +118,17 @@ internal static class DoomWadValidator
                 return false;
             }
 
-            description = $"{stream.Length:N0} bytes, {lumpCount:N0} lumps, {episodeMapCount} episode maps";
+            if (hasEpisodeLayout)
+            {
+                layout = DoomWadLayout.Episode36;
+                description = $"{stream.Length:N0} bytes, {lumpCount:N0} lumps, {episodeMapCount} episode maps";
+            }
+            else
+            {
+                layout = DoomWadLayout.Commercial32;
+                description = $"{stream.Length:N0} bytes, {lumpCount:N0} lumps, {commercialMapCount} commercial maps";
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -131,5 +166,19 @@ internal static class DoomWadValidator
             && name[2] == 'M'
             && name[3] >= '1' && name[3] <= '9'
             && name[4] == 0;
+    }
+
+    private static bool IsCommercialMap(byte[] name)
+    {
+        return name.Length == 8
+            && name[0] == 'M'
+            && name[1] == 'A'
+            && name[2] == 'P'
+            && name[3] >= '0' && name[3] <= '3'
+            && name[4] >= '0' && name[4] <= '9'
+            && name[5] == 0
+            && ((name[3] == '0' && name[4] >= '1')
+                || (name[3] >= '1' && name[3] <= '2')
+                || (name[3] == '3' && name[4] <= '2'));
     }
 }
