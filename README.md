@@ -9,7 +9,7 @@ This branch contains only the DOOM 3 edition:
 - TV title: `DOOM 3`
 - mod data folder: `Schedule I\Mods\SchedualDoom3Tv`
 - required IWAD: `Schedule I\Mods\SchedualDoom3Tv\WAD\Doom3.WAD`
-- version: `1.0.0`
+- version: `1.0.1`
 
 The supplied `Doom3.WAD` is a standalone IWAD with the Ultimate Doom map
 layout (`E1M1` through `E4M9`). The native runtime detects that layout

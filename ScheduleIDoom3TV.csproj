@@ -7,7 +7,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>ScheduleIDoom3TV</AssemblyName>
     <RootNamespace>ScheduleIDoom3TV</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <OutputPath>bin\Doom3\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="stubs\UnityEngine.CoreModule\UnityEngine.CoreModule.csproj" Private="false" />
+    <ProjectReference Include="stubs\UnityEngine.UIModule\UnityEngine.UIModule.csproj" Private="false" />
     <ProjectReference Include="stubs\UnityEngine.UI\UnityEngine.UI.csproj" Private="false" />
     <ProjectReference Include="stubs\S1API\S1API.csproj" Private="false" />
   </ItemGroup>

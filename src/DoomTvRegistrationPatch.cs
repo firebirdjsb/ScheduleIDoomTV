@@ -90,6 +90,10 @@ internal static class DoomTvRegistrationPatch
                 _app = null;
             }
 
+            int attachedApps = DoomTvApp.AttachAllToGameCanvas(__instance);
+            if (attachedApps > 0)
+                MelonLogger.Msg($"Doom TV: bound {attachedApps} discovered app instance(s) to the current game TV canvas.");
+
             if (RegistryAlreadyContainsDoomApp())
             {
                 MelonLogger.Msg("Doom TV: S1API registry already contains the DOOM app.");
@@ -110,6 +114,7 @@ internal static class DoomTvRegistrationPatch
             _registryRegister?.Invoke(null, new object?[] { _app });
             _spawnUi.Invoke(_app, new[] { __instance });
             _spawnButton.Invoke(_app, new[] { __instance });
+            _app.AttachToGameCanvas(__instance);
 
             MelonLogger.Msg("Doom TV: forced DOOM tile registration completed.");
         }

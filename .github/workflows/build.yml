@@ -82,11 +82,11 @@ jobs:
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') (Join-Path $runtime 'doomgeneric_s1.dll')
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'assets\Doom3\PUT_DOOM3_WAD_HERE.txt') (Join-Path $wad 'PUT_DOOM3_WAD_HERE.txt')
 
-          Compress-Archive -Path $mods -DestinationPath (Join-Path $env:GITHUB_WORKSPACE 'SchedualDoom3Tv-1.0.0.zip') -CompressionLevel Optimal
+          Compress-Archive -Path $mods -DestinationPath (Join-Path $env:GITHUB_WORKSPACE 'SchedualDoom3Tv-1.0.1.zip') -CompressionLevel Optimal
 
       - name: Upload DOOM 3 package
         uses: actions/upload-artifact@v4
         with:
-          name: SchedualDoom3Tv-1.0.0
-          path: SchedualDoom3Tv-1.0.0.zip
+          name: SchedualDoom3Tv-1.0.1
+          path: SchedualDoom3Tv-1.0.1.zip
           if-no-files-found: error
