@@ -33,12 +33,21 @@ jobs:
 
           $doomDir = Join-Path $upstream 'doomgeneric'
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'native\s1doom_bridge.c') (Join-Path $doomDir 'doomgeneric_win.c') -Force
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'native\s1doom_sound.c') (Join-Path $doomDir 's1doom_sound.c') -Force
+
+          $iSound = Join-Path $doomDir 'i_sound.c'
+          $iSoundText = Get-Content $iSound -Raw
+          $iSoundText = $iSoundText.Replace('#if defined(FEATURE_SOUND) && !defined(__DJGPP__)', '#if defined(FEATURE_SOUND) && !defined(__DJGPP__) && !defined(S1DOOM_WIN_AUDIO)')
+          Set-Content -Path $iSound -Value $iSoundText -Encoding UTF8
 
           $project = Join-Path $doomDir 'doomgeneric.vcxproj'
           $xml = Get-Content $project -Raw
           $xml = $xml -replace '<ConfigurationType>Application</ConfigurationType>', '<ConfigurationType>DynamicLibrary</ConfigurationType>'
           $xml = $xml -replace '<PlatformToolset>[^<]+</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>'
           $xml = $xml -replace '<CharacterSet>Unicode</CharacterSet>', '<CharacterSet>MultiByte</CharacterSet>'
+          $xml = $xml -replace '<PreprocessorDefinitions>NDEBUG;_CONSOLE;', '<PreprocessorDefinitions>NDEBUG;_CONSOLE;FEATURE_SOUND;S1DOOM_WIN_AUDIO;'
+          $xml = $xml -replace '<ClCompile Include="doomgeneric_win.c" />', "<ClCompile Include=`"doomgeneric_win.c`" />`r`n    <ClCompile Include=`"s1doom_sound.c`" />"
+          $xml = $xml -replace '<ClCompile Include="memio.c" />', "<ClCompile Include=`"memio.c`" />`r`n    <ClCompile Include=`"mus2mid.c`" />"
           Set-Content -Path $project -Value $xml -Encoding UTF8
 
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -92,13 +101,13 @@ jobs:
           Schedule I\Mods\SchedualDoomTv\WAD\Doom1.WAD
           '@ | Set-Content -Path (Join-Path $wad 'PUT_DOOM1_WAD_HERE.txt')
 
-          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.6-alpha.zip'
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'SchedualDoomTv-0.3.16-alpha.zip'
           if (Test-Path $zip) { Remove-Item $zip -Force }
           Compress-Archive -Path $mods -DestinationPath $zip -CompressionLevel Optimal
 
       - name: Upload corrected playable test package
         uses: actions/upload-artifact@v4
         with:
-          name: SchedualDoomTv-0.3.6-alpha
-          path: SchedualDoomTv-0.3.6-alpha.zip
+          name: SchedualDoomTv-0.3.16-alpha
+          path: SchedualDoomTv-0.3.16-alpha.zip
           if-no-files-found: error

@@ -12,7 +12,10 @@ public class Component : Object
 
 public class Transform : Component
 {
+    public Transform parent { get; } = null!;
+    public Vector3 localScale { get; set; }
     public void SetParent(Transform parent, bool worldPositionStays) { }
+    public void SetAsLastSibling() { }
 }
 
 public class RectTransform : Transform
@@ -21,9 +24,10 @@ public class RectTransform : Transform
     public Vector2 anchorMax { get; set; }
     public Vector2 offsetMin { get; set; }
     public Vector2 offsetMax { get; set; }
+    public Vector2 pivot { get; set; }
+    public Vector2 anchoredPosition { get; set; }
+    public Vector2 sizeDelta { get; set; }
 }
-
-public class CanvasRenderer : Component { }
 
 public class GameObject : Object
 {
@@ -44,6 +48,15 @@ public struct Vector2
     public Vector2(float x, float y) { this.x = x; this.y = y; }
     public static Vector2 zero => new(0f, 0f);
     public static Vector2 one => new(1f, 1f);
+}
+
+public struct Vector3
+{
+    public float x;
+    public float y;
+    public float z;
+    public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
+    public static Vector3 one => new(1f, 1f, 1f);
 }
 
 public struct Rect
