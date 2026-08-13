@@ -3,7 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using MelonLoader;
 
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 internal sealed class DoomNativeRuntime : IDisposable
 {
@@ -55,6 +55,16 @@ internal sealed class DoomNativeRuntime : IDisposable
         if (!File.Exists(DoomPaths.WadPath))
             return Fail($"Doom WAD not found: {DoomPaths.WadPath}");
 
+        if (!DoomWadCompatibility.TryPrepare(
+                DoomPaths.WadPath,
+                DoomPaths.CompatibleWadPath,
+                out string runtimeWadPath,
+                out string wadDescription,
+                out string wadError))
+            return Fail($"Doom 3 IWAD preparation failed: {wadError}");
+
+        MelonLogger.Msg($"Doom TV: validated {DoomEdition.WadFileName} ({wadDescription}).");
+
         if (!File.Exists(DoomPaths.RuntimePath))
             return Fail($"Doom runtime not found: {DoomPaths.RuntimePath}");
 
@@ -70,12 +80,12 @@ internal sealed class DoomNativeRuntime : IDisposable
                 return true;
             }
 
-            int result = _create!(DoomPaths.WadPath);
+            int result = _create!(runtimeWadPath);
             if (result <= 0)
                 return Fail(DescribeNativeFailure("create", result));
 
             IsRunning = true;
-            MelonLogger.Msg($"Doom TV: DOOM started from {DoomPaths.WadPath}");
+            MelonLogger.Msg($"Doom TV: DOOM started from {runtimeWadPath}");
             return true;
         }
         catch (Exception ex)

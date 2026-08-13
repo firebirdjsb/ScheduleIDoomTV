@@ -1,8 +1,8 @@
-name: Build ScheduleIDoom2TV
+name: Build ScheduleIDoom3TV
 
 on:
   push:
-    branches: [ Doom2-TV ]
+    branches: [ Doom3-TV ]
   workflow_dispatch:
 
 jobs:
@@ -53,40 +53,40 @@ jobs:
           if (-not $native) { throw 'doomgeneric_s1.dll was not produced.' }
           Copy-Item $native.FullName (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') -Force
 
-      - name: Restore DOOM II managed mod
-        run: dotnet restore ScheduleIDoom2TV.csproj
+      - name: Restore DOOM 3 managed mod
+        run: dotnet restore ScheduleIDoom3TV.csproj
 
-      - name: Build DOOM II managed mod
-        run: dotnet build ScheduleIDoom2TV.csproj -c Release --no-restore
+      - name: Build DOOM 3 managed mod
+        run: dotnet build ScheduleIDoom3TV.csproj -c Release --no-restore
 
-      - name: Verify DOOM II managed DLL
+      - name: Verify DOOM 3 managed DLL
         shell: pwsh
         run: |
-          $dll = Get-ChildItem -Recurse -Filter ScheduleIDoom2TV.dll | Where-Object { $_.FullName -match 'bin\\Doom2\\Release' } | Select-Object -First 1
-          if (-not $dll) { throw 'ScheduleIDoom2TV.dll was not produced.' }
+          $dll = Get-ChildItem -Recurse -Filter ScheduleIDoom3TV.dll | Where-Object { $_.FullName -match 'bin\\Doom3\\Release' } | Select-Object -First 1
+          if (-not $dll) { throw 'ScheduleIDoom3TV.dll was not produced.' }
           $bytes = [System.IO.File]::ReadAllBytes($dll.FullName)
-          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'DOOM II managed output is not a valid PE file.' }
-          Copy-Item $dll.FullName (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoom2TV.dll') -Force
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'DOOM 3 managed output is not a valid PE file.' }
+          Copy-Item $dll.FullName (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoom3TV.dll') -Force
 
-      - name: Create DOOM II Mods install package
+      - name: Create DOOM 3 Mods install package
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $mods = Join-Path $env:GITHUB_WORKSPACE 'package\Mods'
-          $dataRoot = Join-Path $mods 'SchedualDoom2Tv'
+          $dataRoot = Join-Path $mods 'SchedualDoom3Tv'
           $wad = Join-Path $dataRoot 'WAD'
           $runtime = Join-Path $dataRoot 'Runtime'
           New-Item -ItemType Directory -Force -Path $mods, $wad, $runtime | Out-Null
 
-          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoom2TV.dll') (Join-Path $mods 'ScheduleIDoom2TV.dll')
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'ScheduleIDoom3TV.dll') (Join-Path $mods 'ScheduleIDoom3TV.dll')
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'doomgeneric_s1.dll') (Join-Path $runtime 'doomgeneric_s1.dll')
-          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'assets\Doom2\PUT_DOOM2_WAD_HERE.txt') (Join-Path $wad 'PUT_DOOM2_WAD_HERE.txt')
+          Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'assets\Doom3\PUT_DOOM3_WAD_HERE.txt') (Join-Path $wad 'PUT_DOOM3_WAD_HERE.txt')
 
-          Compress-Archive -Path $mods -DestinationPath (Join-Path $env:GITHUB_WORKSPACE 'SchedualDoom2Tv-1.0.0.zip') -CompressionLevel Optimal
+          Compress-Archive -Path $mods -DestinationPath (Join-Path $env:GITHUB_WORKSPACE 'SchedualDoom3Tv-1.0.0.zip') -CompressionLevel Optimal
 
-      - name: Upload DOOM II package
+      - name: Upload DOOM 3 package
         uses: actions/upload-artifact@v4
         with:
-          name: SchedualDoom2Tv-1.0.0
-          path: SchedualDoom2Tv-1.0.0.zip
+          name: SchedualDoom3Tv-1.0.0
+          path: SchedualDoom3Tv-1.0.0.zip
           if-no-files-found: error

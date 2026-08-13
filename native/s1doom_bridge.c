@@ -51,7 +51,7 @@ static int prepare_arguments(const char* wad_path)
     s_wad_path_owned = strdup(wad_path);
     if (s_wad_path_owned == NULL)
         return 0;
-    s_argv[0] = "ScheduleIDoom2TV";
+    s_argv[0] = "ScheduleIDoom3TV";
     s_argv[1] = "-iwad";
     s_argv[2] = s_wad_path_owned;
     s_argv[3] = "-nosound";

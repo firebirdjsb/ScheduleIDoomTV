@@ -5,7 +5,7 @@ using S1API.TVApp;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 public sealed class DoomTvApp : TVApp
 {

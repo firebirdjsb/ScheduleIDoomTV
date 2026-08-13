@@ -1,14 +1,14 @@
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 internal static class DoomEdition
 {
-    internal const string GameTitle = "DOOM II";
-    internal const string GameLogName = "Doom II";
-    internal const string MelonName = "Schedule I - Doom II TV";
+    internal const string GameTitle = "DOOM 3";
+    internal const string GameLogName = "Doom 3";
+    internal const string MelonName = "Schedule I - Doom 3 TV";
     internal const string ModVersion = "1.0.0";
-    internal const string AppId = "ScheduleIDoom2TV.Doom2";
-    internal const string ModDirectoryName = "SchedualDoom2Tv";
-    internal const string WadFileName = "Doom2.WAD";
-    internal const string HarmonyId = "com.firebirdjsb.scheduleidoom2tv";
-    internal const string FramebufferName = "Doom2Framebuffer";
+    internal const string AppId = "ScheduleIDoom3TV.Doom3";
+    internal const string ModDirectoryName = "SchedualDoom3Tv";
+    internal const string WadFileName = "Doom3.WAD";
+    internal const string HarmonyId = "com.firebirdjsb.scheduleidoom3tv";
+    internal const string FramebufferName = "Doom3Framebuffer";
 }

@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using MelonLoader;
 
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 /// <summary>
 /// Keeps Schedule I's local player stationary while the TV DOOM app owns the

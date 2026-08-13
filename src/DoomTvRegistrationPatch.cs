@@ -3,7 +3,7 @@ using System.Reflection;
 using HarmonyLib;
 using MelonLoader;
 
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 internal static class DoomTvRegistrationPatch
 {

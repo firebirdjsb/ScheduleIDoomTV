@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 internal static class DoomInputService
 {

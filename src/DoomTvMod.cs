@@ -1,6 +1,6 @@
 using MelonLoader;
 
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 public sealed class DoomTvMod : MelonMod
 {

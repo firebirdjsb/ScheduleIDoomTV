@@ -5,10 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>ScheduleIDoom2TV</AssemblyName>
-    <RootNamespace>ScheduleIDoom2TV</RootNamespace>
+    <AssemblyName>ScheduleIDoom3TV</AssemblyName>
+    <RootNamespace>ScheduleIDoom3TV</RootNamespace>
     <Version>1.0.0</Version>
-    <OutputPath>bin\Doom2\$(Configuration)\</OutputPath>
+    <OutputPath>bin\Doom3\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+.vs/
+dist/
+package/
+*.zip
+doomgeneric_s1.dll
+ScheduleIDoom3TV.dll

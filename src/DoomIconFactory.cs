@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using MelonLoader;
 using UnityEngine;
 
-namespace ScheduleIDoom2TV;
+namespace ScheduleIDoom3TV;
 
 internal static class DoomIconFactory
 {
@@ -22,13 +22,13 @@ internal static class DoomIconFactory
             const int height = 64;
             byte[] pixels = new byte[width * height * 4];
 
-            // A deeper red frame and gold Roman numeral distinguish DOOM II.
+            // A deep red frame and three gold bars distinguish DOOM 3.
             Fill(pixels, width, height, 9, 7, 8, 255);
             DrawRect(pixels, width, height, 3, 3, width - 6, height - 6, 176, 31, 22, 255);
             DrawRect(pixels, width, height, 6, 6, width - 12, height - 12, 43, 14, 10, 255);
             DrawRect(pixels, width, height, 55, 9, 34, 46, 82, 20, 12, 255);
             DrawWordDoom(pixels, width, height, 7, 18, 2, 4);
-            DrawRomanTwo(pixels, width, height, 59, 14);
+            DrawRomanThree(pixels, width, height, 58, 14);
 
             Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
             {
@@ -119,10 +119,11 @@ internal static class DoomIconFactory
         }
     }
 
-    private static void DrawRomanTwo(byte[] p, int w, int h, int x, int y)
+    private static void DrawRomanThree(byte[] p, int w, int h, int x, int y)
     {
         DrawRomanOne(p, w, h, x, y);
-        DrawRomanOne(p, w, h, x + 16, y);
+        DrawRomanOne(p, w, h, x + 10, y);
+        DrawRomanOne(p, w, h, x + 20, y);
     }
 
     private static void DrawRomanOne(byte[] p, int w, int h, int x, int y)
@@ -130,9 +131,9 @@ internal static class DoomIconFactory
         const byte r = 249;
         const byte g = 184;
         const byte b = 45;
-        DrawRect(p, w, h, x, y, 11, 4, r, g, b, 255);
-        DrawRect(p, w, h, x + 4, y + 4, 3, 28, r, g, b, 255);
-        DrawRect(p, w, h, x, y + 32, 11, 4, r, g, b, 255);
+        DrawRect(p, w, h, x, y, 7, 4, r, g, b, 255);
+        DrawRect(p, w, h, x + 2, y + 4, 3, 28, r, g, b, 255);
+        DrawRect(p, w, h, x, y + 32, 7, 4, r, g, b, 255);
     }
     private static void Fill(byte[] p, int w, int h, byte r, byte g, byte b, byte a)
     {
