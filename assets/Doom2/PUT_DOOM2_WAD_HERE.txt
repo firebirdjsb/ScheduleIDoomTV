@@ -1,0 +1,8 @@
+Place your legally owned DOOM II IWAD in this folder and name it exactly:
+
+Doom2.WAD
+
+Final path:
+Schedule I\Mods\SchedualDoom2Tv\WAD\Doom2.WAD
+
+The IWAD is not included in the redistributable mod package.
