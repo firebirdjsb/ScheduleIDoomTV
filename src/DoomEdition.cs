@@ -2,6 +2,7 @@ namespace ScheduleIDoom3TV;
 
 internal static class DoomEdition
 {
+    internal const string Author = "XunfairX/GrandmasAnkles";
     internal const string GameTitle = "DOOM 3";
     internal const string GameLogName = "Doom 3";
     internal const string MelonName = "Schedule I - Doom 3 TV";

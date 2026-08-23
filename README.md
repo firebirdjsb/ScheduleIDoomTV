@@ -9,6 +9,7 @@ This branch contains only the DOOM 3 edition:
 - TV title: `DOOM 3`
 - mod data folder: `Schedule I\Mods\SchedualDoom3Tv`
 - supported IWADs: `Doom3.WAD`, `Tnt.wad`, and `Plutonia.wad`
+- author: `XunfairX/GrandmasAnkles`
 - version: `1.1.0`
 
 The supplied `Doom3.WAD` is a standalone IWAD with the Ultimate Doom map
